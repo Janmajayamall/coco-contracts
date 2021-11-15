@@ -21,7 +21,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
 
     address public collateralToken;
     MarketConfig public marketConfig;
-    mapping(address => uint) cReserves;
+    mapping(address => uint) public cReserves;
 
     address public delegate;
 
@@ -217,6 +217,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
             _stateDetails.stage == uint8(Stages.MarketBuffer) 
             && _stateDetails.donEscalationCount < _stateDetails.donEscalationLimit
             && block.number < _stateDetails.donBufferEndsAtBlock
+            
         );
 
         require(_for < 2);
