@@ -158,8 +158,8 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         _mint(address(this), token1Id, amount, '');
 
         // transfer outcome tokens
-        safeTransferFrom(address(this), to, token0Id, amount0, '');
-        safeTransferFrom(address(this), to, token1Id, amount1, '');
+        _transfer(address(this), to, token0Id, amount0);
+        _transfer(address(this), to, token1Id, amount1);
 
         uint _reserve0New = (_reserves.reserve0 + amount) - amount0;
         uint _reserve1New = (_reserves.reserve1 + amount) - amount1;

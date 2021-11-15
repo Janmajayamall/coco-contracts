@@ -187,6 +187,11 @@ contract ERC1155
         // emit TransferSingle(msg.sender, owner, address(0), id, value);
     }
 
+    function _transfer(address from, address to, uint id, uint value) internal {
+        _balances[id][from] -= value;
+        _balances[id][to] += value;
+    }
+
 
     // function _doSafeTransferAcceptanceCheck(
     //     address operator,

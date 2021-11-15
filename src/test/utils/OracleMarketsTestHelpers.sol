@@ -79,11 +79,11 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 		(r0, r1) = OracleMarkets(_oracle).outcomeReserves(_marketIdentifier);
 	}
 
-	function getOutcomeTokenIds(address _oracle,  bytes32 _marketIdentifier) public view returns (uint t0, uint t1) {
+	function getOutcomeTokenIds(address _oracle,  bytes32 _marketIdentifier) public pure returns (uint t0, uint t1) {
 		(t0, t1) = OracleMarkets(_oracle).getOutcomeTokenIds(_marketIdentifier);
 	}
 
-	function getTokenCBalance(address _of, address _oracle,  bytes32 _marketIdentifier) public returns (uint b) {
+	function getTokenCBalance(address _of, address _oracle,  bytes32 _marketIdentifier) public view returns (uint b) {
 		address _tokenC = getTokenC(_oracle, _marketIdentifier);
 		b = IERC20(_tokenC).balanceOf(_of);
 	}

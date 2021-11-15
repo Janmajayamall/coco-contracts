@@ -31,6 +31,16 @@ contract OracleMarketsTest is OracleMarketsTestHelpers {
 
     function deployOracle() public {
         oracle = address(new OracleMarkets(address(this)));
+        OracleMarkets(oracle).updateCollateralToken(tokenC);
+        OracleMarkets(oracle).updateMarketConfig(
+            oracleConfig.isActive, 
+            oracleConfig.feeNumerator, 
+            oracleConfig.feeDenominator, 
+            oracleConfig.donEscalationLimit, 
+            oracleConfig.expireBufferBlocks, 
+            oracleConfig.donBufferBlocks, 
+            oracleConfig.resolutionBufferBlocks
+        );
     }
 
 }
@@ -64,9 +74,9 @@ contract OracleMarketsTest_StageCreated is OracleMarketsTest {
         _marketDetails.feeDenominator = oracleConfig.feeDenominator;
         checkMarketDetails(_oracle, _marketIdentifier, _marketDetails);
 
-        checkDonBufferEndsAtBlock(_oracle, _marketIdentifier, block.number + oracleConfig.donBufferBlocks);
+        checkDonBufferEndsAtBlock(_oracle, _marketIdentifier, block.number + oracleConfig.expireBufferBlocks + oracleConfig.donBufferBlocks);
         checkExpireAtBlock(_oracle, _marketIdentifier, block.number + oracleConfig.expireBufferBlocks);
-        checkResolutionEndsAtBlock(_oracle, _marketIdentifier, block.number + oracleConfig.resolutionBufferBlocks);
+        checkResolutionEndsAtBlock(_oracle, _marketIdentifier, block.number + oracleConfig.expireBufferBlocks + oracleConfig.resolutionBufferBlocks);
         checkEscalationCount(_oracle, _marketIdentifier, 0);
     }
 
@@ -107,6 +117,21 @@ contract OracleMarketsTest_StageFunded is OracleMarketsTest {
         checkReserves(_oracle, _marketIdentifier, r0+a-a0, r1+a-a1);
     }
 
+    function testFail_check_buy(uint120 a0, uint120 a1) public {
+        if (a0 == a1) return;
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketIdentifier;
+
+        // manipulate vals
+        (uint r0, uint r1) = getOutcomeReserves(_oracle, _marketIdentifier);
+        uint a = Math.getAmountCToBuyTokens(a0, a1, r0, r1);
+        a -= 1; // supplying less amount than needed
+
+        IERC20(tokenC).transfer(_oracle, a);
+
+        OracleMarkets(_oracle).buy(a0, a1, address(this), _marketIdentifier);
+    }
+
     function test_gas_buy() public {
         address _tokenC = tokenC;
         address _oracle = oracle;
@@ -131,6 +156,32 @@ contract OracleMarketsTest_StageFunded is OracleMarketsTest {
         checkOutcomeTokenBalance(address(this), _oracle, _marketIdentifier, bt0-a0, bt1-a1);
         checkReserves(_oracle, _marketIdentifier, r0+a0-a, r1+a1-a);
         checkTokenCBalance(address(this), _oracle, _marketIdentifier, tb+a);
+    }
+
+    function testFail_check_sell(uint120 a0, uint120 a1) public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketIdentifier;
+
+        buy(address(this), _oracle, _marketIdentifier, a0, a1);
+
+        // manipulate vals
+        (uint r0, uint r1) = getOutcomeReserves(_oracle, _marketIdentifier);
+        uint a = Math.getAmountCBySellTokens(a0, a1, r0, r1);
+        a += 10; // ask for more amount than selling a0 & a1 would permit
+
+        emit log_uint(a);
+        emit log_uint(a0);
+        emit log_uint(a1);
+        emit log_uint(r0);
+        emit log_uint(r1);
+
+
+        (uint t0, uint t1) = getOutcomeTokenIds(_oracle, _marketIdentifier);
+        OracleMarkets(_oracle).safeTransferFrom(address(this), _oracle, t0, a0, '');
+        OracleMarkets(_oracle).safeTransferFrom(address(this), _oracle, t1, a1, '');
+
+        OracleMarkets(_oracle).sell(a, address(this), _marketIdentifier);
+
     }
 
     function test_gas_sell() public {
