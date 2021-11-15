@@ -37,7 +37,7 @@ contract MarketRouter {
 
     /// @notice Buy exact amountOfToken0 & amountOfToken1 with collteral tokens <= amountInCMax
     function buyExactTokensForMaxCTokens(uint amountOutToken0, uint amountOutToken1, uint amountInCMax, address oracle, bytes32 marketIdentifier) external {
-        (uint reserve0, uint reserve1) = OracleMarkets(oracle).reserves(marketIdentifier);
+        (uint reserve0, uint reserve1) = OracleMarkets(oracle).outcomeReserves(marketIdentifier);
         uint amountIn = Math.getAmountCToBuyTokens(amountOutToken0, amountOutToken1, reserve0, reserve1);
         require(amountInCMax >= amountIn, "TRADE: INVALID");
         (address tokenC,,) = OracleMarkets(oracle).marketDetails(marketIdentifier);
@@ -50,7 +50,7 @@ contract MarketRouter {
     function buyMinTokensForExactCTokens(uint amountOutToken0Min, uint amountOutToken1Min, uint amountInC, uint fixedTokenIndex, address oracle, bytes32 marketIdentifier) external {
         require(fixedTokenIndex < 2);
 
-        (uint reserve0, uint reserve1) = OracleMarkets(oracle).reserves(marketIdentifier);
+        (uint reserve0, uint reserve1) = OracleMarkets(oracle).outcomeReserves(marketIdentifier);
 
         uint amountOutToken0 = amountOutToken0Min;
         uint amountOutToken1 = amountOutToken1Min;
@@ -68,7 +68,7 @@ contract MarketRouter {
 
     /// @notice Sell exact amountInToken0 & amountInToken1 for collateral tokens >= amountOutTokenCMin
     function sellExactTokensForMinCTokens(uint amountInToken0, uint amountInToken1, uint amountOutTokenCMin, address oracle, bytes32 marketIdentifier) external {
-        (uint reserve0, uint reserve1) = OracleMarkets(oracle).reserves(marketIdentifier);
+        (uint reserve0, uint reserve1) = OracleMarkets(oracle).outcomeReserves(marketIdentifier);
         uint amountOutTokenC = Math.getAmountCBySellTokens(amountInToken0, amountInToken1, reserve0, reserve1);
         require(amountOutTokenC >= amountOutTokenCMin, "TRADE: INVALID");
 
@@ -83,7 +83,7 @@ contract MarketRouter {
     function sellMaxTokensForExactCTokens(uint amountInToken0Max, uint amountInToken1Max, uint amountOutTokenC, uint fixedTokenIndex, address oracle, bytes32 marketIdentifier) external {
         require(fixedTokenIndex < 2);
 
-        (uint reserve0, uint reserve1) = OracleMarkets(oracle).reserves(marketIdentifier);
+        (uint reserve0, uint reserve1) = OracleMarkets(oracle).outcomeReserves(marketIdentifier);
 
         uint amountInToken0 = amountInToken0Max;
         uint amountInToken1 = amountInToken1Max;

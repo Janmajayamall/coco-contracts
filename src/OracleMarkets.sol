@@ -13,7 +13,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
     mapping(bytes32 => StateDetails) public stateDetails;
     mapping(bytes32 => Staking) public staking;
     mapping(bytes32 => MarketDetails) public marketDetails;
-    mapping(bytes32 => Reserves) public reserves;
+    mapping(bytes32 => Reserves) public outcomeReserves;
     mapping(bytes32 => StakingReserves) public stakingReserves;
     mapping(bytes32 => mapping(bytes32 => uint256)) stakes;
     mapping(bytes32 => address) creators;
@@ -21,6 +21,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
 
     address public collateralToken;
     MarketConfig public marketConfig;
+    mapping(address => uint) cReserves;
 
     address public delegate;
 
@@ -49,7 +50,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
                 // Set outcome by expiry  
                 Staking memory _staking = staking[marketIdentifier];
                 if (_staking.staker0 == address(0) && _staking.staker1 == address(0)){
-                    Reserves memory _reserves = reserves[marketIdentifier];
+                    Reserves memory _reserves = outcomeReserves[marketIdentifier];
                     if (_reserves.reserve0 < _reserves.reserve1){
                         _stateDetails.outcome = 0;
                     }else if (_reserves.reserve1 < _reserves.reserve0){
@@ -87,41 +88,6 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         marketIdentifier = keccak256(abi.encode(_creator, _eventIdentifier, address(this)));
     }
 
-    // function getStateDetails(bytes32 marketIdentifier) external view returns (
-    //     uint[9] memory detailsArr
-    // ) {
-    //     StateDetails memory _details = stateDetails[marketIdentifier];
-    //     detailsArr[0] = _details.expireAtBlock;
-    //     detailsArr[1] = _details.donBufferEndsAtBlock;
-    //     detailsArr[2] = _details.resolutionEndsAtBlock;
-    //     detailsArr[3] = _details.donBufferBlocks;
-    //     detailsArr[4] = _details.resolutionBufferBlocks;
-    //     detailsArr[5] = _details.donEscalationCount;
-    //     detailsArr[6] = _details.donEscalationLimit;
-    //     detailsArr[7] = _details.outcome;
-    //     detailsArr[8] = _details.stage;
-    // }
-
-    // // get staking info
-    // function getStaking(bytes32 marketIdentifier) external view returns(uint,address,address,uint8){
-    //     Staking memory _staking = staking[marketIdentifier];
-    //     return (
-    //         _staking.lastAmountStaked,
-    //         _staking.staker0,
-    //         _staking.staker1,
-    //         _staking.lastOutcomeStaked
-    //     );
-    // }
-
-    // function getMarketDetails(bytes32 marketIdentifier) external view returns(address, uint32, uint32) {
-    //     MarketDetails memory _marketDetails = marketDetails[marketIdentifier];
-    //     return (
-    //         _marketDetails.tokenC,
-    //         _marketDetails.feeNumerator,
-    //         _marketDetails.feeDenominator
-    //     );
-    // }
-
     function createAndFundMarket(address _creator, bytes32 _eventIdentifier) external {
         bytes32 marketIdentifier = getMarketIdentifier(_creator, _eventIdentifier);
 
@@ -129,7 +95,8 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
 
         address tokenC = collateralToken;
 
-        uint amount = IERC20(tokenC).balanceOf(address(this)); // fundingAmount > 0
+        uint amount = IERC20(tokenC).balanceOf(address(this)) - cReserves[tokenC] ; // fundingAmount > 0
+        cReserves[tokenC] += amount;
 
         (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
 
@@ -137,11 +104,11 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         _mint(address(this), token0Id, amount, '');
         _mint(address(this), token1Id, amount, '');
 
-        // set reserves
+        // set outcomeReserves
         Reserves memory _reserves;
         _reserves.reserve0 = amount;
         _reserves.reserve1 = amount;
-        reserves[marketIdentifier] = _reserves; 
+        outcomeReserves[marketIdentifier] = _reserves; 
 
         // get market config
         MarketConfig memory _marketConfig = marketConfig;
@@ -179,10 +146,12 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         require(isMarketFunded(marketIdentifier));
 
         // MarketDetails memory _marketDetails = marketDetails;
-        Reserves memory _reserves = reserves[marketIdentifier];
+        Reserves memory _reserves = outcomeReserves[marketIdentifier];
         (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
 
-        uint amount = IERC20(marketDetails[marketIdentifier].tokenC).balanceOf(address(this));
+        address tokenC = marketDetails[marketIdentifier].tokenC;
+        uint amount = IERC20(tokenC).balanceOf(address(this)) - cReserves[tokenC];
+        cReserves[tokenC] += amount;
 
         // buy outcome tokens
         _mint(address(this), token0Id, amount, '');
@@ -199,7 +168,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         _reserves.reserve0 = _reserve0New;
         _reserves.reserve1 = _reserve1New;
 
-        reserves[marketIdentifier] = _reserves;
+        outcomeReserves[marketIdentifier] = _reserves;
 
         // emit OutcomeTraded(address(this), to);
     } 
@@ -207,12 +176,14 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
     function sell(uint amount, address to, bytes32 marketIdentifier) external {
         require(isMarketFunded(marketIdentifier));
 
-        // MarketDetails memory _marketDetails = marketDetails;
-        Reserves memory _reserves = reserves[marketIdentifier];
-        (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
-
         // transfer optimistically
-        IERC20(marketDetails[marketIdentifier].tokenC).transfer(to, amount);
+        address tokenC = marketDetails[marketIdentifier].tokenC;
+        IERC20(tokenC).transfer(to, amount);
+        cReserves[tokenC] -= amount;
+
+        // MarketDetails memory _marketDetails = marketDetails;
+        Reserves memory _reserves = outcomeReserves[marketIdentifier];
+        (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
 
         // check transferred outcome tokens
         uint balance0 = balanceOf(address(this), token0Id);
@@ -224,7 +195,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         _burn(address(this), token0Id, amount);
         _burn(address(this), token1Id, amount);
 
-        // update reserves 
+        // update outcomeReserves 
         uint _reserve0New = (_reserves.reserve0 + amount0) - amount;
         uint _reserve1New = (_reserves.reserve1 + amount1) - amount;
         require((_reserves.reserve0*_reserves.reserve1) <= (_reserve0New*_reserve1New), "ERR - INV");
@@ -232,7 +203,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         _reserves.reserve0 = _reserve0New;
         _reserves.reserve1 = _reserve1New;
         
-        reserves[marketIdentifier] = _reserves;
+        outcomeReserves[marketIdentifier] = _reserves;
 
         // emit OutcomeTraded(address(this), to);
     }
@@ -250,13 +221,16 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
 
         require(_for < 2);
 
-        uint amount = IERC20(marketDetails[marketIdentifier].tokenC).balanceOf(address(this));
+        address tokenC = marketDetails[marketIdentifier].tokenC;
+        uint amount = IERC20(tokenC).balanceOf(address(this)) - cReserves[tokenC];
+        cReserves[tokenC] += amount;
+
         (uint sToken0Id, uint sToken1Id) = getReserveTokenIds(marketIdentifier);
 
         StakingReserves memory _stakingReserves = stakingReserves[marketIdentifier];
         Staking memory _staking = staking[marketIdentifier];
 
-        // update staking reserves
+        // update staking outcomeReserves
         if (_for == 0){
             _mint(to, sToken0Id, amount, '');
             _stakingReserves.reserveS0 += amount;
@@ -296,7 +270,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         (bool valid, uint8 outcome) = isMarketClosed(marketIdentifier);
         require(valid);
 
-        Reserves memory _reserves = reserves[marketIdentifier];
+        Reserves memory _reserves = outcomeReserves[marketIdentifier];
         (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
 
         // get amount
@@ -318,7 +292,10 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
             winAmount = amount1;
         }
 
-        IERC20(marketDetails[marketIdentifier].tokenC).transfer(to, winAmount);
+        // transfer win amount
+        address tokenC = marketDetails[marketIdentifier].tokenC;
+        IERC20(tokenC).transfer(to, winAmount);
+        cReserves[tokenC] -= winAmount;
 
         emit WinningRedeemed(address(this), to);
     }
@@ -330,13 +307,19 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         (uint sToken0Id, uint sToken1Id) = getReserveTokenIds(marketIdentifier);
         uint sAmount0 = balanceOf(msg.sender, sToken0Id);
         uint sAmount1 = balanceOf(msg.sender, sToken1Id);
+
+        // burn stake tokens
+        _burn(msg.sender, sToken0Id, sAmount0);
+        _burn(msg.sender, sToken1Id, sAmount1);
         
+        StakingReserves memory _stakingReserves = stakingReserves[marketIdentifier];
         uint winAmount;
         if (outcome == 2){    
             winAmount = sAmount0 + sAmount1;
+            _stakingReserves.reserveS0 -= sAmount0;
+            _stakingReserves.reserveS1 -= sAmount1;
         }else {
             Staking memory _staking = staking[marketIdentifier];
-            StakingReserves memory _stakingReserves = stakingReserves[marketIdentifier];
             
             if (outcome == 0){
                 _stakingReserves.reserveS0 -= sAmount0;
@@ -356,11 +339,14 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
                 }
             }
 
-            stakingReserves[marketIdentifier] = _stakingReserves;
             staking[marketIdentifier] = _staking;
         }
+        stakingReserves[marketIdentifier] = _stakingReserves;
 
-        IERC20(marketDetails[marketIdentifier].tokenC).transfer(msg.sender, winAmount);
+        // transfer win amount
+        address tokenC = marketDetails[marketIdentifier].tokenC;
+        IERC20(tokenC).transfer(msg.sender, winAmount);
+        cReserves[tokenC] -= winAmount;
 
         emit StakedRedeemed(address(this), msg.sender);
     }
@@ -401,20 +387,34 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         _stateDetails.stage = uint8(Stages.MarketClosed);
         stateDetails[marketIdentifier] = _stateDetails;
 
-        IERC20(marketDetails[marketIdentifier].tokenC).transfer(msg.sender, fee);
+        // transfer fee
+        address tokenC = marketDetails[marketIdentifier].tokenC;
+        IERC20(tokenC).transfer(msg.sender, fee);
+        cReserves[tokenC] -= fee;
 
         emit OutcomeSet(address(this));
     }
 
+    /* 
+    Note on configs - 
+    1. To resolve markets to favored outcome right after market expiry, set donBufferPeriod to 0
+    2. To pass on outcome decision to oracle right after market expiry, set escalation limit to 0 & donBufferBlocks > 0
+    3. To resolve to last staked outcome right after hitting escalation limit, set resolutionBufferBlocks to 0
+     */
     function updateMarketConfig(
         bool _isActive, 
-        uint8 _feeNumerator, 
-        uint8 _feeDenominator,
+        uint32 _feeNumerator, 
+        uint32 _feeDenominator,
         uint16 _donEscalationLimit, 
         uint32 _expireBufferBlocks, 
         uint32 _donBufferBlocks, 
         uint32 _resolutionBufferBlocks
     ) external {
+        // numerator < denominator
+        require(_feeNumerator < _feeDenominator);
+        // _expireBufferBlocks > 0 for active trading time
+        require(_expireBufferBlocks != 0);
+
         MarketConfig memory _marketConfig;
         _marketConfig.isActive = _isActive;
         _marketConfig.feeNumerator = _feeNumerator;

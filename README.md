@@ -1,102 +1,19 @@
-# <h1 align="center"> DappTools Template </h1>
+Few points
 
-**Template repository for getting started quickly with DappTools**
+1. One could consecutively stake for the right outcome, once they spot someone staking on the wrong outcome so that they can get their stake.
+   a. Thing to note here is that this is only possible if they are staking on the right outcome,
+   which solves our purpose of extracting the right outcome.
+   b. Anyone who does this is very sure of what the oracle would resolve to. In such a case,
+   they could either be an insider or are really good.
+   (i) If they are an insider, then overtime people will realise and abandon using the services of the oracle in question
+   (ii) If they are really good; that's nice. It's fair, they are being rewarded for the risk.
+   c. One -ve side effect of this is that it increases the frequency of intervention by oracle. But in
+   my opinion, if it isn't insider trading then oracle can simply increase escalation limit to control frequency.
+   d. Right now, oracle fee is only taken from the losing stake. It's possible to disincentivise such behaviour by
+   taking oracle fee from the sum of both stakes. In my opinion, this will simply limit the number of times this can
+   be done. So whenever the opposite stake (after deducting oracle fee) is greater than the amount deducted in oracle
+   fees from the winning stake, this strategy is still profitable.
+   Also, I would argue against imposing oracle fee on winning stake because of unecessary complications it accompanies.
 
-![Github Actions](https://github.com/gakonst/dapptools-template/workflows/Tests/badge.svg)
-
-## Building and testing
-
-```sh
-git clone https://github.com/gakonst/dapptools-template
-cd dapptools-template
-make # This installs the project's dependencies.
-make test
-```
-
-## Deploying
-
-Contracts can be deployed via the `make deploy` command. Addresses are automatically
-written in a name-address json file stored under `out/addresses.json`.
-
-We recommend testing your deployments and provide an example under [`scripts/test-deploy.sh`](./scripts/test-deploy.sh)
-which will launch a local testnet, deploy the contracts, and do some sanity checks.
-
-Environment variables under the `.env` file are automatically loaded (see [`.env.example`](./.env.example)).
-Be careful of the [precedence in which env vars are read](https://github.com/dapphub/dapptools/tree/2cf441052489625f8635bc69eb4842f0124f08e4/src/dapp#precedence).
-
-We assume `ETH_FROM` is an address you own and is part of your keystore.
-If not, use `ethsign import` to import your private key.
-
-See the [`Makefile`](./Makefile#25) for more context on how this works under the hood
-
-We use Alchemy as a remote node provider for the Mainnet & Rinkeby network deployments.
-You must have set your API key as the `ALCHEMY_API_KEY` enviroment variable in order to
-deploy to these networks
-
-### Mainnet
-
-```
-ETH_FROM=0x3538b6eF447f244268BCb2A0E1796fEE7c45002D make deploy-mainnet
-```
-
-### Rinkeby
-
-```
-ETH_FROM=0x3538b6eF447f244268BCb2A0E1796fEE7c45002D make deploy-rinkeby
-```
-
-### Custom Network
-
-```
-ETH_RPC_URL=<your network> make deploy
-```
-
-### Local Testnet
-
-```
-# on one terminal
-dapp testnet
-# get the printed account address from the testnet, and set it as ETH_FROM. Then:
-make deploy
-```
-
-### Verifying on Etherscan
-
-After deploying your contract you can verify it on Etherscan using:
-
-```
-ETHERSCAN_API_KEY=<api-key> contract_address=<address> network_name=<mainnet|rinkeby|...> make verify
-```
-
-Check out the [dapp documentation](https://github.com/dapphub/dapptools/tree/master/src/dapp#dapp-verify-contract) to see how
-verifying contracts work with DappTools.
-
-## Installing the toolkit
-
-If you do not have DappTools already installed, you'll need to run the below
-commands
-
-### Install Nix
-
-```sh
-# User must be in sudoers
-curl -L https://nixos.org/nix/install | sh
-
-# Run this or login again to use Nix
-. "$HOME/.nix-profile/etc/profile.d/nix.sh"
-```
-
-### Install DappTools
-
-```sh
-curl https://dapp.tools/install | sh
-```
-
-## DappTools Resources
-
-* [DappTools](https://dapp.tools)
-    * [Hevm Docs](https://github.com/dapphub/dapptools/blob/master/src/hevm/README.md)
-    * [Dapp Docs](https://github.com/dapphub/dapptools/tree/master/src/dapp/README.md)
-    * [Seth Docs](https://github.com/dapphub/dapptools/tree/master/src/seth/README.md)
-* [DappTools Overview](https://www.youtube.com/watch?v=lPinWgaNceM)
-* [Awesome-DappTools](https://github.com/rajivpo/awesome-dapptools)
+2. Why oracle fee is only deducted from the losing stake?
+   It's simple. Winners don't lose anything & receive some share of the loser.

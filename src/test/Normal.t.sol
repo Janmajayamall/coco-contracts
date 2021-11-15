@@ -28,19 +28,19 @@ contract Normal is DSTest {
 		MemeToken(tokenC).transfer(oracle, 10*10**18);
 	}
 
-	// function test_createOracle() public {
-	// 	address oracle = address(new OracleMarkets(address(this)));
-	// 	OracleMarkets(oracle).updateCollateralToken(address(this));
-	// 	OracleMarkets(oracle).updateMarketConfig(
-	// 		true,
-	// 		10,
-	// 		100,
-	// 		10,
-	// 		10,
-	// 		100,
-	// 		100
-	// 	);
-	// }
+	function test_createOracle() public {
+		address oracle = address(new OracleMarkets(address(this)));
+		OracleMarkets(oracle).updateCollateralToken(address(this));
+		OracleMarkets(oracle).updateMarketConfig(
+			true,
+			10,
+			100,
+			10,
+			10,
+			100,
+			100
+		);
+	}
 
 	function test_creatMarket() public {
 		OracleMarkets(oracle).collateralToken();
