@@ -616,5 +616,71 @@ contract OracleMarketsTest_StageEscalationLimitHitOracleResolves is OracleMarket
     }
 }
 
-/* 
-Now what happens after  resolution period expires*/
+
+contract OracleMarketsTest_StageResolutionPeriodExpired is OracleMarketsTest {
+
+    bytes32 marketWithStakesOnBothSidesResolutionPeriodExpired;
+
+    function setUp() public {
+        tokenC = deloyAndPrepTokenC(address(this));
+        setOracleConfig();
+        deployOracle();
+        deployActors();
+
+        /* 
+        Prep marketWithStakesOnBothSides with resolution period expired
+         */
+        bytes32 _eventIdentifier = keccak256('marketWithStakesOnBothSides');
+        bytes32 _marketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
+        marketWithStakesOnBothSidesResolutionPeriodExpired = _marketIdentifier;
+        createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
+        buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
+        buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
+        roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
+        for (uint i; i < oracleConfig.donEscalationLimit; i++){
+            uint odd = i%2;
+            address from;
+            if (odd == 1){
+                from = actor1;
+            }else {
+                from = address(this);
+            }
+
+            stakeOutcome(oracle, _marketIdentifier, odd, 2*10**18*(2**i), from);
+        } // stake till escalation limit
+        roll(getStateDetail(oracle, _marketIdentifier, 2)); // resolution period expires
+
+    }
+
+    /* 
+    Post resolution period expiry, market resolves to last staked outcome
+     */
+    function test_redeem_marketWithStakesOnBothSidesResolutionPeriodExpired() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSidesResolutionPeriodExpired;
+
+        uint outcome;
+        if (oracleConfig.donEscalationLimit-1%2 == 0){
+            outcome = 0;
+        }else {
+            outcome = 1;
+        }
+
+        if (outcome == 0){
+            checkRedeemWinning(address(this), _oracle, _marketIdentifier, 10*10**18, 0, 10*10**18);
+            checkRedeemWinning(actor1, _oracle, _marketIdentifier, 0, 5*10**18, 0);
+        }else{
+            checkRedeemWinning(address(this), _oracle, _marketIdentifier, 10*10**18, 0, 0);
+            checkRedeemWinning(actor1, _oracle, _marketIdentifier, 0, 5*10**18, 5*10**18);
+        }
+
+        (uint sR0, uint sR1) = getStakingReserves(_oracle, _marketIdentifier);
+        if (outcome == 0){
+            checkRedeemStake(address(this), _oracle, _marketIdentifier, sR0 + sR1); // win amount = amount staked + losing amount staked (Note - orcle fee isn't deducted)
+            checkRedeemStake(actor1, _oracle, _marketIdentifier, 0);
+        }else {
+            checkRedeemStake(address(this), _oracle, _marketIdentifier, 0);
+            checkRedeemStake(actor1, _oracle, _marketIdentifier, sR0 + sR1);
+        }
+    }
+}

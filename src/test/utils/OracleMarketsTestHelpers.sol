@@ -308,4 +308,42 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 	// 		uint8 stage
 	// 	) = OracleMarkets(_oracle).stateDetails(_marketIdentifier);
 	// }
+
+	/* 
+// 	Market types
+// 	 */
+// 	enum MarketType {
+// 		MarketWithNoStakesNoTrades,
+// 		MarketWithNoStakesAndBiasedTrades,
+// 		MarketWithNoStakesAndEqualTrades,
+// 		MarketWithTradesAndStakesOnBothSides,
+// 		MarketWithTradesAndStakesOnSingleSide
+// 	}
+
+// 	enum SimStage {
+// 		InBuffer,
+// 		BufferExpired,
+// 		PostEscalationHit,
+
+//     }
+
+// 	function getMarketTypeMarketIdentifier(MarketType _type) public pure returns (bytes32 _identifier){
+// 		_identifier = keccak256(abi.encode(uint(_type)));
+// 	}
+
+// 	function getMarketType(address _oracle, uint _fundAmount, Stages _atStage, MarketType _type) public returns (bytes32 _marketIdentifier) {
+// 		if (_type == MarketType.MarketWithNoTrades){
+// 			bytes32 _eventIdentifier = getMarketTypeMarketIdentifier(_type);
+// 			_marketIdentifier = getMarketIdentifier(_oracle, address(this), _eventIdentifier);
+//         	createAndFundMarket(_oracle, address(this), _eventIdentifier, _fundAmount);
+// 		}
+
+
+// 		if (_atStage == Stages.MarketBuffer){
+// 			uint _block = getStateDetail(_oracle, _marketIdentifier, 0);
+// 			roll(_block);
+// 		}
+// 		if (_atStage == Stages.Market)
+
+// 	}
 }
