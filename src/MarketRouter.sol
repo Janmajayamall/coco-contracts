@@ -8,11 +8,8 @@ import './OracleMarkets.sol';
 
 
 contract MarketRouter {
-    address public factory;
 
-    constructor(address _factory) {
-        factory = _factory;
-    }
+    constructor() {}
 
     function getMarketIdentifier(address creator, bytes32 eventIdentifier, address oracle) public pure returns (bytes32 marketIdentifier){
         marketIdentifier = keccak256(abi.encode(creator, eventIdentifier, oracle));
@@ -25,12 +22,12 @@ contract MarketRouter {
         address tokenC = OracleMarkets(oracle).collateralToken();
 
         // create & fund
-        TransferHelper.safeTransfer(tokenC, oracle, fundingAmount);
+        TransferHelper.safeTransferFrom(tokenC, msg.sender, oracle, fundingAmount);
         OracleMarkets(oracle).createAndFundMarket(msg.sender, eventIdentifier);
 
         // place bet
         bytes32 marketIdentifier = getMarketIdentifier(msg.sender, eventIdentifier, oracle);
-        TransferHelper.safeTransfer(tokenC, oracle, amountIn);
+        TransferHelper.safeTransferFrom(tokenC, msg.sender, oracle, amountIn);
         if (_for == 0) OracleMarkets(oracle).buy(amountIn, 0, msg.sender, marketIdentifier);
         if (_for == 1) OracleMarkets(oracle).buy(0, amountIn, msg.sender, marketIdentifier);
     }

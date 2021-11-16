@@ -15,9 +15,8 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
     mapping(bytes32 => MarketDetails) public marketDetails;
     mapping(bytes32 => Reserves) public outcomeReserves;
     mapping(bytes32 => StakingReserves) public stakingReserves;
-    mapping(bytes32 => mapping(bytes32 => uint256)) stakes;
-    mapping(bytes32 => address) creators;
-    mapping(bytes32 => bytes) eventIdentfiier;
+    mapping(bytes32 => address) public creators;
+    // mapping(bytes32 => bytes32) public eventIdentfiiers;
 
     address public collateralToken;
     MarketConfig public marketConfig;
@@ -133,13 +132,16 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         _stateDetails.resolutionEndsAtBlock = _stateDetails.expireAtBlock + _stateDetails.resolutionBufferBlocks; // pre-set resolution expiry, in case donEscalationLimit == 0 && donBufferBlocks > 0
         stateDetails[marketIdentifier] = _stateDetails;
 
-        // set creator
+        // set creator & event identifier
         creators[marketIdentifier] = _creator;
+        // eventIdentfiiers[marketIdentifier] = _eventIdentifier;
 
         require(amount > 0, 'ZERO');
 
         // oracle is active
         require(_marketConfig.isActive, 'Oracle inactive');
+
+        emit MarketCreated(_creator, _eventIdentifier, marketIdentifier);
     }
 
     function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external {
@@ -170,7 +172,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
 
         outcomeReserves[marketIdentifier] = _reserves;
 
-        // emit OutcomeTraded(address(this), to);
+        emit OutcomeTraded(marketIdentifier, to);
     } 
 
     function sell(uint amount, address to, bytes32 marketIdentifier) external {
@@ -205,7 +207,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         
         outcomeReserves[marketIdentifier] = _reserves;
 
-        // emit OutcomeTraded(address(this), to);
+        emit OutcomeTraded(marketIdentifier, to);
     }
 
     function stakeOutcome(uint _for, address to, bytes32 marketIdentifier) external {
@@ -263,7 +265,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         _stateDetails.donEscalationCount += 1;
         stateDetails[marketIdentifier] = _stateDetails;
 
-        // emit OutcomeStaked(address(this), to);
+        emit OutcomeStaked(marketIdentifier, to);
     }
 
 
@@ -298,7 +300,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         IERC20(tokenC).transfer(to, winAmount);
         cReserves[tokenC] -= winAmount;
 
-        emit WinningRedeemed(address(this), to);
+        emit WinningRedeemed(marketIdentifier, to);
     }
 
     function redeemStake(bytes32 marketIdentifier) external {
@@ -349,7 +351,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         IERC20(tokenC).transfer(msg.sender, winAmount);
         cReserves[tokenC] -= winAmount;
 
-        emit StakedRedeemed(address(this), msg.sender);
+        emit StakedRedeemed(marketIdentifier, msg.sender);
     }
 
     function setOutcome(uint8 outcome, bytes32 marketIdentifier) external {
@@ -393,7 +395,7 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         IERC20(tokenC).transfer(msg.sender, fee);
         cReserves[tokenC] -= fee;
 
-        emit OutcomeSet(address(this));
+        emit OutcomeSet(marketIdentifier);
     }
 
     /* 
@@ -425,14 +427,19 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
         _marketConfig.donBufferBlocks = _donBufferBlocks;
         _marketConfig.resolutionBufferBlocks = _resolutionBufferBlocks;
         marketConfig = _marketConfig;
+
+        emit OracleConfigUpdated();
     }
 
     function updateCollateralToken(address token) external {
         collateralToken = token;
+        emit OracleConfigUpdated();
     }
 
     function updateDelegate(address _delegate) external {
         require(msg.sender == delegate);
         delegate = _delegate;
+
+        emit DelegateChanged(_delegate);
     }
 }

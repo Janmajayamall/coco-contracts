@@ -120,8 +120,7 @@ library Math {
             let y
             {
                 switch fixedTokenIndex
-                case 0 {
-                    
+                case 0 { 
                     let denom := safeSub(safeAdd(r0,a),fixedTokenAmount)
                     if iszero(denom) {revert(0,0)}
                     x := safeAdd(r1,a)

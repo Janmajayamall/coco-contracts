@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 interface IOracleFactory {
-    event OracleRegistered(address indexed oracle);
+    event OracleCreated(address indexed oracle);
 
     function createOracle(
         address delegate,

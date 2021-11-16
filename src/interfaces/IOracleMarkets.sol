@@ -77,9 +77,12 @@ interface IOracleMarkets {
     // function setOutcome(uint8 _outcome) external;
     // function claimReserve() external;
 
-    event OutcomeTraded(address indexed market, address indexed by);
-    event OutcomeStaked(address indexed market, address indexed by);
-    event OutcomeSet(address indexed market);
-    event WinningRedeemed(address indexed market, address indexed by);
-    event StakedRedeemed(address indexed market, address indexed by);
+    event MarketCreated(address indexed creator, bytes32 indexed eventIdentifier, bytes32 indexed marketIdentifier);
+    event OutcomeTraded(bytes32 indexed marketIdentifier, address indexed by);
+    event OutcomeStaked(bytes32 indexed marketIdentifier, address indexed by);
+    event OutcomeSet(bytes32 indexed marketIdentifier);
+    event WinningRedeemed(bytes32 indexed marketIdentifier, address indexed by);
+    event StakedRedeemed(bytes32 indexed marketIdentifier, address indexed by);
+    event OracleConfigUpdated();
+    event DelegateChanged(address indexed to);
 }

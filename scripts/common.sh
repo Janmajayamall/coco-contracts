@@ -12,6 +12,8 @@ ADDRESSES_FILE=${ADDRESSES_FILE:-$OUT_DIR/"addresses.json"}
 # default to localhost rpc
 ETH_RPC_URL=${ETH_RPC_URL:-http://localhost:8545}
 
+mkdir -p "$OUT_DIR/abis"
+
 # green log helper
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
@@ -156,4 +158,15 @@ contract_size() {
 	BYTECODE=0x$(jq -r "$PATTERN.evm.bytecode.object" out/dapp.sol.json)
 	length=$(echo "$BYTECODE" | wc -m)
 	echo $(($length / 2))
+}
+
+
+spit_abi() {
+	NAME=$1
+	# select the filename and the contract in it
+	PATTERN=".contracts[\"src/$NAME.sol\"].$NAME"
+
+	# get the constructor's signature
+	ABI=$(jq -r "$PATTERN.abi" out/dapp.sol.json)
+	echo "$ABI" > "./out/abis/$NAME.json"
 }

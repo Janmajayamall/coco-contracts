@@ -347,3 +347,10 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 
 // 	}
 }
+
+
+/* 
+Tests I might be missing - 
+1. When oracle resoles to outcome that is zero stakes
+
+ */

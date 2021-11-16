@@ -30,6 +30,6 @@ contract OracleFactory is IOracleFactory {
             _resolutionBufferBlocks
         );
 
-        emit OracleRegistered(oracle);
+        emit OracleCreated(oracle);
     }
 }
