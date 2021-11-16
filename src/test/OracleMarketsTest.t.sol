@@ -15,6 +15,7 @@ contract OracleMarketsTest is OracleMarketsTestHelpers {
 	OracleConfig oracleConfig;
 	address oracle;
 	address tokenC;
+    uint fundAmount = 10*10**18;
 
     bytes32 eventIdentifier = keccak256('default');
 
@@ -96,8 +97,6 @@ contract OracleMarketsTest_StageCreated is OracleMarketsTest {
 contract OracleMarketsTest_StageFunded is OracleMarketsTest {
 
     bytes32 marketIdentifier;
-    uint fundAmount = 10*10**18;
-
 
     function setUp() public {
         tokenC = deloyAndPrepTokenC(address(this));
@@ -226,7 +225,6 @@ contract OracleMarketsTest_StageFunded is OracleMarketsTest {
 contract OracleMarketsTest_StageBuffer is OracleMarketsTest {
 
     bytes32 marketIdentifier;
-    uint fundAmount = 10*10**18;
 
     function setUp() public {
         tokenC = deloyAndPrepTokenC(address(this));
@@ -327,8 +325,6 @@ contract OracleMarketsTest_StageBuffer is OracleMarketsTest {
 }
 
 contract OracleMarketsTest_StageBufferPeriodExpired is OracleMarketsTest {
-
-    uint fundAmount = 10*10**18;
 
     bytes32 marketWithNoStakesAndNoTrades; // resolves to 2
     bytes32 marketWithNoStakesAndBiasedTrades; // resolves to biased outcome
@@ -461,4 +457,162 @@ contract OracleMarketsTest_StageBufferPeriodExpired is OracleMarketsTest {
         checkRedeemStake(address(this), _oracle, _marketIdentifier, 4*10**18); // winning stake, but they win nothing since opposition stake == 0
         checkRedeemStake(actor1, _oracle, _marketIdentifier, 2*10**18);
     }
+
+    /* 
+    Test for invalid stages */
+
+    /* 
+    Gas Test
+     */
+    function test_gas_redeemWinning_marketWithStakesOnBothSides() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSides;
+        (uint t0,) = OracleMarkets(_oracle).getOutcomeTokenIds(_marketIdentifier);
+        OracleMarkets(_oracle).safeTransferFrom(address(this), _oracle, t0, 10*10**18, '');
+        OracleMarkets(_oracle).redeemWinning(address(this), _marketIdentifier);
+    }
+
+    function test_gas_redeemStake_marketWithStakesOnBothSides() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSides;
+        OracleMarkets(_oracle).redeemStake(_marketIdentifier);
+    }
+}
+
+contract OracleMarketsTest_StageEscalationLimitHitOracleResolves is OracleMarketsTest {
+
+    /* 
+    With stakes on both sides, oracle collects fee from the losing stake
+     */
+    bytes32 marketWithStakesOnBothSides;
+
+    /* 
+    With stakes only on single side, oracle collects fee from the losing stake if 
+    if losing stake has stakes
+     */
+    bytes32 marketWithStakesOnSingleSide;
+
+
+    function setUp() public {
+        tokenC = deloyAndPrepTokenC(address(this));
+        setOracleConfig();
+        deployOracle();
+        deployActors();
+
+
+        
+
+        /* 
+        Prep marketWithStakesOnBothSides
+         */
+        bytes32 _eventIdentifier = keccak256('marketWithStakesOnBothSides');
+        bytes32 _marketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
+        marketWithStakesOnBothSides = _marketIdentifier;
+        createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
+        buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
+        buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
+        roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
+        for (uint i; i < oracleConfig.donEscalationLimit; i++){
+            uint odd = i%2;
+            address from;
+            if (odd == 1){
+                from = actor1;
+            }else {
+                from = address(this);
+            }
+            stakeOutcome(oracle, _marketIdentifier, odd, 2*10**18*(2**i), from);
+        } // stake till escalation limit
+
+        /* 
+        Prep marketWithStakesOnSingleSide
+         */
+        // _eventIdentifier = keccak256('marketWithStakesOnSingleSide');
+        // _marketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
+        // marketWithStakesOnSingleSide = _marketIdentifier;
+        // createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
+        // buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
+        // buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
+        // roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
+        // for (uint i; i < oracleConfig.donEscalationLimit; i++){
+        //     uint odd = i%2;
+        //     address from;
+        //     if (odd == 1){
+        //         from = actor1;
+        //     }else {
+        //         from = address(this);
+        //     }
+        //     stakeOutcome(oracle, _marketIdentifier, 0, 2*10**18*(2**i), from);
+        // } // stake till escalation limit with only single sided stake
+    }
+
+    /* 
+    Estimates amount staked to reach escalation limit.
+    Assumes that staking competition is between 2 actors
+    taking alternate turns for their favored outcome, 
+    starting with outcome = 0. Their favored outcome is 
+    represented by their index (hence, actorIndex should
+    alays be < 2).
+     */
+    function estimateAmountStakedToReachEscalation(address _oracle, bytes32 _marketIdentifier, uint actorIndex) internal view returns (uint amountStaked) {
+        require(actorIndex < 2);
+        uint el = getStateDetail(_oracle, _marketIdentifier, 6);
+        for (uint i=0; i < el; i++){
+            uint odd = i%2;
+            if (actorIndex == odd){
+                amountStaked += 2*10**18*(2**i);
+            }
+        }
+    }
+
+    /* 
+    Both markets can be resolves to 0 or 1 or 2
+     */
+    function test_marketWithStakesOnBothSides_resolved(uint8 outcome) public {
+        outcome = outcome % 3;
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSides;
+
+        checkPassMarketResolution(_oracle, _marketIdentifier, outcome);
+        emit log_named_uint("Stage - ", getStateDetail(_oracle, _marketIdentifier, 8));
+        checkOutcome(_oracle, _marketIdentifier, outcome);
+
+        if (outcome == 0){
+            checkRedeemWinning(address(this), _oracle, _marketIdentifier, 10*10**18, 0, 10*10**18);
+            checkRedeemWinning(actor1, _oracle, _marketIdentifier, 0, 5*10**18, 0);
+        }else if (outcome == 1){
+            checkRedeemWinning(address(this), _oracle, _marketIdentifier, 10*10**18, 0, 0);
+            checkRedeemWinning(actor1, _oracle, _marketIdentifier, 0, 5*10**18, 5*10**18);
+        }else {
+            checkRedeemWinning(address(this), _oracle, _marketIdentifier, 10*10**18, 0, 5*10**18);
+            checkRedeemWinning(actor1, _oracle, _marketIdentifier, 0, 5*10**18, 25*10**17);
+        }
+
+        (uint sR0, uint sR1) = getStakingReserves(_oracle, _marketIdentifier);
+        uint oracleFee;
+        if (outcome != 2){
+            if (outcome == 0){
+                oracleFee = getOracleFeeAmount(_oracle, _marketIdentifier, sR1);
+            }else {
+                oracleFee = getOracleFeeAmount(_oracle, _marketIdentifier, sR0);
+            }
+        }
+        if (outcome == 0){
+            checkRedeemStake(address(this), _oracle, _marketIdentifier, sR0 + sR1); // winning amount = amount staked + losing stake - oracle fee; sR1 represents stake losing stake - oracle fee since setOutcome was called before
+            checkRedeemStake(actor1, _oracle, _marketIdentifier, 0); 
+        }else if (outcome == 1) {
+            checkRedeemStake(address(this), _oracle, _marketIdentifier, 0);
+            checkRedeemStake(actor1, _oracle, _marketIdentifier, sR1 + sR0);
+        }else {
+            checkRedeemStake(address(this), _oracle, _marketIdentifier, sR0);
+            checkRedeemStake(actor1, _oracle, _marketIdentifier, sR1);
+        }
+    }
+
+    // function test_marketWithStakesOnBothSides_resolvedTo1() public {
+
+    // }
+
+    // function test_marketWithStakesOnBothSides_resolvedTo2() public {
+
+    // }
 }

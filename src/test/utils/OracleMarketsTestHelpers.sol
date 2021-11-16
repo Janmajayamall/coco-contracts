@@ -99,6 +99,10 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 		(r0, r1) = OracleMarkets(_oracle).outcomeReserves(_marketIdentifier);
 	}
 
+	function getStakingReserves(address _oracle,  bytes32 _marketIdentifier) public view returns (uint r0, uint r1) {
+		(r0, r1) = OracleMarkets(_oracle).stakingReserves(_marketIdentifier);
+	}
+
 	function getOutcomeTokenIds(address _oracle,  bytes32 _marketIdentifier) public pure returns (uint t0, uint t1) {
 		(t0, t1) = OracleMarkets(_oracle).getOutcomeTokenIds(_marketIdentifier);
 	}
@@ -118,7 +122,7 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 		bt1 = OracleMarkets(_oracle).balanceOf(_of, t1);
 	}
 
-	function getStateDetail(address _oracle, bytes32 _marketIdentifier, uint index) public returns(uint) {
+	function getStateDetail(address _oracle, bytes32 _marketIdentifier, uint index) public view returns(uint) {
 		(
 			uint32 expireAtBlock,
 			uint32 donBufferEndsAtBlock,
@@ -140,6 +144,11 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 		if (index == 7) return outcome;
 		if (index == 8) return stage;
         return 0;
+	}
+
+	function getOracleFeeAmount(address _oracle, bytes32 _marketIdentifier, uint losingStake) public view returns (uint fee){
+		(, uint feeNum, uint feeDenom) = getMarketDetails(_oracle, _marketIdentifier);
+		fee = (feeNum*losingStake)/feeDenom;
 	}
 
     function deloyAndPrepTokenC(address to) public returns (address _tokenC) {
@@ -243,6 +252,51 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 
 		uint tokenCBalanceAfter = getTokenCBalance(_of, _oracle, _marketIdentifier);
 		assertEq(tokenCBalanceAfter-tokenCBalanceBefore, eW);
+	}
+
+	/* 
+	Note - This function assumes that delegate is set to the contract's address
+	 */
+	function checkPassMarketResolution(address _oracle, bytes32 _marketIdentifier, uint outcome) public {
+		uint tokenCBalanceBefore = getTokenCBalance(address(this), _oracle, _marketIdentifier);	
+		(uint sRB0, uint sRB1) = getStakingReserves(_oracle, _marketIdentifier);
+	
+		OracleMarkets(_oracle).setOutcome(uint8(outcome), _marketIdentifier);
+
+		// estimate collection
+		uint eFeeCollection;
+		if (outcome != 2){
+			if (outcome == 0){
+				eFeeCollection = getOracleFeeAmount(_oracle, _marketIdentifier, sRB1);
+			}else{
+				eFeeCollection = getOracleFeeAmount(_oracle, _marketIdentifier, sRB0);
+			}
+		}
+
+		// check fee collection
+		uint tokenCBalanceAfter = getTokenCBalance(address(this), _oracle, _marketIdentifier);
+		assertEq(tokenCBalanceAfter-tokenCBalanceBefore, eFeeCollection);
+
+		// check staking reserves
+		(uint sRA0, uint sRA1) = getStakingReserves(_oracle, _marketIdentifier);
+		uint d0;
+		uint d1;
+		if (outcome != 2){
+			if (outcome == 0){
+				d0 = 0;
+				d1 = eFeeCollection;
+			}else {
+				d0 = eFeeCollection;
+				d1 = 0;
+			}
+		}
+		// emit log_named_uint("outcome ", outcome);
+		// emit log_named_uint("b ", sRA0);
+		// emit log_named_uint("b ", sRB0);
+		// emit log_named_uint("b ", sRA1);
+		// emit log_named_uint("b ", sRB1);
+		assertEq(sRB0-sRA0, d0);
+		assertEq(sRB1-sRA1, d1);
 	}
 
 	// function checkStateDetails(address _oracle, bytes32 _marketIdentifier, StateDetails memory _stateDetails) public {
