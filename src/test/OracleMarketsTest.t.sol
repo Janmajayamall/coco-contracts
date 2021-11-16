@@ -8,6 +8,7 @@ import "./../interfaces/IOracleMarkets.sol";
 import "./utils/Hevm.sol";
 import "./../libraries/Math.sol";
 import "./utils/OracleMarketsTestHelpers.sol";
+import "./utils/Actor.sol";
 
 contract OracleMarketsTest is OracleMarketsTestHelpers {
 
@@ -16,6 +17,8 @@ contract OracleMarketsTest is OracleMarketsTestHelpers {
 	address tokenC;
 
     bytes32 eventIdentifier = keccak256('default');
+
+    address actor1;
 
     function setOracleConfig() public {
         // setup default oracle confing 
@@ -43,6 +46,10 @@ contract OracleMarketsTest is OracleMarketsTestHelpers {
         );
     }
 
+    function deployActors() public {
+        actor1 = address(new Actor());
+    }
+
 }
 
 contract OracleMarketsTest_StageCreated is OracleMarketsTest {
@@ -50,6 +57,7 @@ contract OracleMarketsTest_StageCreated is OracleMarketsTest {
         tokenC = deloyAndPrepTokenC(address(this));
         setOracleConfig();
         deployOracle();
+        deployActors();
     }
 
     function _createAndFundMarket() internal {
@@ -95,6 +103,8 @@ contract OracleMarketsTest_StageFunded is OracleMarketsTest {
         tokenC = deloyAndPrepTokenC(address(this));
         setOracleConfig();
         deployOracle();
+        deployActors();
+        
         createAndFundMarket(oracle, address(this), eventIdentifier, fundAmount);
         marketIdentifier = getMarketIdentifier(oracle, address(this), eventIdentifier);
 
@@ -118,13 +128,15 @@ contract OracleMarketsTest_StageFunded is OracleMarketsTest {
     }
 
     function testFail_buy_inSufficientAmount(uint120 a0, uint120 a1) public {
-        if (a0 == a1) return;
+        if (a0 == a1 ) return;
         address _oracle = oracle;
         bytes32 _marketIdentifier = marketIdentifier;
 
         // manipulate vals
         (uint r0, uint r1) = getOutcomeReserves(_oracle, _marketIdentifier);
         uint a = Math.getAmountCToBuyTokens(a0, a1, r0, r1);
+
+        emit log_named_uint("amount", a);
         a -= 1; // supplying less amount than needed
 
         IERC20(tokenC).transfer(_oracle, a);
@@ -211,7 +223,6 @@ contract OracleMarketsTest_StageFunded is OracleMarketsTest {
 
 }
 
-
 contract OracleMarketsTest_StageBuffer is OracleMarketsTest {
 
     bytes32 marketIdentifier;
@@ -221,18 +232,14 @@ contract OracleMarketsTest_StageBuffer is OracleMarketsTest {
         tokenC = deloyAndPrepTokenC(address(this));
         setOracleConfig();
         deployOracle();
+        deployActors();
+        
         createAndFundMarket(oracle, address(this), eventIdentifier, fundAmount);
         marketIdentifier = getMarketIdentifier(oracle, address(this), eventIdentifier);
 
-        // commences buffer period
-        roll(getStateDetail(oracle, marketIdentifier, 1));
+        // commences buffer period; rolls to block at which market expires
+        roll(getStateDetail(oracle, marketIdentifier, 0));
     }
-
-    /* 
-    Normal staking
-    Failed when no double
-    Stake till escalation limit
-     */
 
     function test_stakeOutcome() public {
         address _oracle = oracle;
@@ -246,13 +253,185 @@ contract OracleMarketsTest_StageBuffer is OracleMarketsTest {
         checkTokenCReserves(_oracle, _marketIdentifier, rTokenC + 2*10**18); // tokenC reserves increased by stake
 
         // more valid staking
-        stakeOutcome(_oracle, _marketIdentifier, 1, 4*10**18, address(this));
+        stakeOutcome(_oracle, _marketIdentifier, 1, 4*10**18, actor1);
         stakeOutcome(_oracle, _marketIdentifier, 0, 8*10**18, address(this));
-        checkStake(address(this), _oracle, _marketIdentifier, 10*10**18, 4*10**18);
-        checkTokenCReserves(_oracle, _marketIdentifier, rTokenC + 14*10**18);
 
+        checkStake(address(this), _oracle, _marketIdentifier, 10*10**18, 0);
+        checkStake(actor1, _oracle, _marketIdentifier, 0, 4*10**18);
+
+        checkTokenCReserves(_oracle, _marketIdentifier, rTokenC + 14*10**18);
         checkTokenCReserveMatchesBalance(_oracle, _marketIdentifier);
     }
 
+    function testFail_stakeOutcome_invalidDoubling() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketIdentifier;
+
+        stakeOutcome(_oracle, _marketIdentifier, 0, 2*10**18, address(this));
+
+        stakeOutcome(_oracle, _marketIdentifier, 1, 4*10**18-1, actor1);
+    }
+
+    function testFail_stakeOutcome_amountZero() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketIdentifier;
+
+        stakeOutcome(_oracle, _marketIdentifier, 0, 0, address(this));
+    }
+
+    function test_stakeOutcome_tillBeforeEscalationLimit() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketIdentifier;
+
+        uint el = getStateDetail(_oracle, _marketIdentifier, 6);
+        for (uint i; i < el; i++){
+            uint odd = i%2;
+            address from;
+            if (odd == 1){
+                from = actor1;
+            }else {
+                from = address(this);
+            }
+            stakeOutcome(_oracle, _marketIdentifier, i%2, 2*10**18*(2**i), from);
+        }
+    }
+
+    function testFail_stakeOutcome_tillAfterHittingEscalationLimit() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketIdentifier;
+
+        uint el = getStateDetail(_oracle, _marketIdentifier, 6);
+        for (uint i; i < el+1; i++){
+            uint odd = i%2;
+            address from;
+            if (odd == 1){
+                from = actor1;
+            }else {
+                from = address(this);
+            }
+            stakeOutcome(_oracle, _marketIdentifier, i%2, 2*10**18*(2**i), from);
+        }
+    }
+
+    /* 
+    Gas tests */
+    function test_gas_stakeOutcome() public {
+        address _oracle = oracle;
+        IERC20(tokenC).transfer(_oracle, 10*10**18);
+        OracleMarkets(oracle).stakeOutcome(0, address(this), marketIdentifier);
+    }
+
+     /* 
+    Write tests for invalid stage access
+     */
+}
+
+contract OracleMarketsTest_StageBufferPeriodExpired is OracleMarketsTest {
+
+    uint fundAmount = 10*10**18;
+
+    bytes32 marketWithNoStakesAndNoTrades; // resolves to 2
+    bytes32 marketWithNoStakesAndBiasedTrades; // resolves to biased outcome
+    bytes32 marketWithNoStakesAndEqualTrades; // resolves to 2
+
+    /* 
+    marketWithStakesOnBothSide would always resolve to
+    last staked outcome. Thus, prior trades do not matter.
+     */
+    bytes32 marketWithStakesOnBothSides;
+
+    /* 
+    marketWithStakesOnSingleSide would always resolve to
+    last staked outcome. Thus, prior trades do not matter.
+    In this case, the last staker does not wins anything, since 
+    there's no opposition stake.
+     */
+    bytes32 marketWithStakesOnSingleSide;
     
+    function setUp() public {
+        tokenC = deloyAndPrepTokenC(address(this));
+        setOracleConfig();
+        deployOracle();
+        deployActors();
+        
+        /* 
+        Prep marketWithNoStakesAndNoTrades
+         */
+        bytes32 _eventIdentifier = keccak256('marketWithNoStakesAndNoTrades');
+        bytes32 _marketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
+        marketWithNoStakesAndNoTrades = _marketIdentifier;
+        createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
+        roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
+
+        /* 
+        Prep marketWithNoStakesAndBiasedTrades
+         */
+        _eventIdentifier = keccak256('marketWithNoStakesAndBiasedTrades');
+        _marketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
+        marketWithNoStakesAndBiasedTrades = _marketIdentifier;
+        createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
+        // biased trade; tilt favor to 0
+        buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
+        buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
+        roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
+
+        /* 
+        Prep marketWithNoStakesAndEqualTrades
+         */
+        _eventIdentifier = keccak256('marketWithNoStakesAndEqualTrades');
+        _marketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
+        marketWithNoStakesAndEqualTrades = _marketIdentifier;
+        createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
+        // equal trades
+        buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
+        buy(actor1, oracle, _marketIdentifier, 0, 10*10**18);
+        roll(getStateDetail(oracle, _marketIdentifier, 1));
+
+        /* 
+        Prep marketWithStakesOnBothSides
+         */
+        _eventIdentifier = keccak256('marketWithStakesOnBothSides');
+        _marketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
+        marketWithStakesOnBothSides = _marketIdentifier;
+        createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
+        buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
+        buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
+        roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
+        stakeOutcome(oracle, _marketIdentifier, 0, 2*10**18, actor1);
+        stakeOutcome(oracle, _marketIdentifier, 1, 4*10**18, address(this)); // winning stake
+        roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
+
+        /* 
+        Prep marketWithStakesOnSingleSide
+         */
+        _eventIdentifier = keccak256('marketWithStakesOnSingleSide');
+        _marketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
+        marketWithStakesOnSingleSide = _marketIdentifier;
+        createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
+        buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
+        buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
+        roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
+        stakeOutcome(oracle, _marketIdentifier, 0, 2*10**18, actor1);
+        stakeOutcome(oracle, _marketIdentifier, 0, 4*10**18, address(this)); // winning stake & but nothing to win
+        roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
+    }
+
+    function test_redeem_marketWithNoStakesAndNoTrades() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithNoStakesAndNoTrades;
+        checkRedeemWinning(address(this), _oracle, _marketIdentifier, 0, 0, 0);
+        checkRedeemStake(address(this), _oracle, _marketIdentifier, 0);
+        checkOutcome(_oracle, _marketIdentifier, 2);
+    }
+
+    function test_redeem_marketWithNoStakesAndBiasedTrades() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithNoStakesAndBiasedTrades;
+        checkRedeemWinning(address(this), _oracle, _marketIdentifier, 10*10**18, 0, 10*10**18);
+        checkOutcome(_oracle, _marketIdentifier, 0);
+        checkRedeemStake(address(this), _oracle, _marketIdentifier, 0);
+    }
+
+
+
 }

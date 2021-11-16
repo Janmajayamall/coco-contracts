@@ -189,8 +189,8 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 
 	function checkStake(address _of, address _oracle, bytes32 _marketIdentifier, uint eb0, uint eb1) public {
 		(uint sTId0, uint sTId1) = getReserveTokenIds(_oracle, _marketIdentifier);
-		assertEq(OracleMarkets(_oracle).balanceOf(_of, sTId0), eb1);
-		assertEq(OracleMarkets(_oracle).balanceOf(_of, sTId1), eb0);
+		assertEq(OracleMarkets(_oracle).balanceOf(_of, sTId0), eb0);
+		assertEq(OracleMarkets(_oracle).balanceOf(_of, sTId1), eb1);
 	}
 
 	function checkTokenCReserveMatchesBalance(address _oracle, bytes32 _marketIdentifier) public {
@@ -201,6 +201,40 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 	function checkTokenCReserves(address _oracle, bytes32 _marketIdentifier, uint v) public {
 		address _tokenC = getTokenC(_oracle, _marketIdentifier);
 		assertEq(OracleMarkets(_oracle).cReserves(_tokenC), v);
+	}
+
+	function checkRedeemWinning(address _of, address _oracle, bytes32 _marketIdentifier, uint a0, uint a1, uint eW) public {
+		uint tokenCBalanceBefore = getTokenCBalance(_of, _oracle, _marketIdentifier);
+
+		(uint t0, uint t1) = getOutcomeTokenIds(_oracle, _marketIdentifier);
+
+		// transfer tokens
+		OracleMarkets(_oracle).safeTransferFrom(_of, _oracle, t0, a0, '');
+		OracleMarkets(_oracle).safeTransferFrom(_of, _oracle, t1, a1, '');
+
+		OracleMarkets(_oracle).redeemWinning(_of, _marketIdentifier);
+
+		uint tokenCBalanceAfter = getTokenCBalance(_of, _oracle, _marketIdentifier);
+
+		assertEq(tokenCBalanceAfter-tokenCBalanceBefore, eW);
+	}
+
+	function checkRedeemStake(address _of, address _oracle, bytes32 _marketIdentifier, uint eW) public {
+		uint tokenCBalanceBefore = getTokenCBalance(_of, _oracle, _marketIdentifier);
+
+		/* 
+		redeemStake is only function in OracleMarkets where msg.sender matters
+		 */
+		if (_of == address(this)){
+			OracleMarkets(_oracle).redeemStake(_marketIdentifier);
+		}else{
+			bytes memory data = abi.encodeWithSignature("redeemStake(bytes32)", _marketIdentifier);
+			(bool success, ) = _of.call(abi.encodeWithSignature("send(address,bytes,bool)", _oracle, data, true));
+			require(success);
+		}
+
+		uint tokenCBalanceAfter = getTokenCBalance(_of, _oracle, _marketIdentifier);
+		assertEq(tokenCBalanceAfter-tokenCBalanceBefore, eW);
 	}
 
 	// function checkStateDetails(address _oracle, bytes32 _marketIdentifier, StateDetails memory _stateDetails) public {
