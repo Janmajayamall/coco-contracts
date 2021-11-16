@@ -486,21 +486,11 @@ contract OracleMarketsTest_StageEscalationLimitHitOracleResolves is OracleMarket
      */
     bytes32 marketWithStakesOnBothSides;
 
-    /* 
-    With stakes only on single side, oracle collects fee from the losing stake if 
-    if losing stake has stakes
-     */
-    bytes32 marketWithStakesOnSingleSide;
-
-
     function setUp() public {
         tokenC = deloyAndPrepTokenC(address(this));
         setOracleConfig();
         deployOracle();
         deployActors();
-
-
-        
 
         /* 
         Prep marketWithStakesOnBothSides
@@ -567,13 +557,12 @@ contract OracleMarketsTest_StageEscalationLimitHitOracleResolves is OracleMarket
     /* 
     Both markets can be resolves to 0 or 1 or 2
      */
-    function test_marketWithStakesOnBothSides_resolved(uint8 outcome) public {
+    function test_marketWithStakesOnBothSides_setOutcome(uint8 outcome) public {
         outcome = outcome % 3;
         address _oracle = oracle;
         bytes32 _marketIdentifier = marketWithStakesOnBothSides;
 
         checkPassMarketResolution(_oracle, _marketIdentifier, outcome);
-        emit log_named_uint("Stage - ", getStateDetail(_oracle, _marketIdentifier, 8));
         checkOutcome(_oracle, _marketIdentifier, outcome);
 
         if (outcome == 0){
@@ -608,11 +597,24 @@ contract OracleMarketsTest_StageEscalationLimitHitOracleResolves is OracleMarket
         }
     }
 
-    // function test_marketWithStakesOnBothSides_resolvedTo1() public {
+    function testFail_setOutcomeToInvalidValue(uint8 outcome) public {
+        if (outcome >= 3) OracleMarkets(oracle).setOutcome(outcome, marketWithStakesOnBothSides);
+        assertTrue(false);
+    }
 
-    // }
+    function testFail_setOutcomeInvalidDelegate() public {
+        bytes memory data = abi.encodeWithSignature("setOutcome(uint8,bytes32)", 0, marketWithStakesOnBothSides);
+        (bool success, ) = actor1.call(abi.encodeWithSignature("send(address,bytes,bool)", oracle, data, true));
+        assertTrue(success);
+    }
 
-    // function test_marketWithStakesOnBothSides_resolvedTo2() public {
-
-    // }
+    /* 
+    Gas Test
+     */
+    function test_gas_setOutcome() public {
+        OracleMarkets(oracle).setOutcome(0, marketWithStakesOnBothSides);
+    }
 }
+
+/* 
+Now what happens after  resolution period expires*/

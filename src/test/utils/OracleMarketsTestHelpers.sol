@@ -290,11 +290,7 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 				d1 = 0;
 			}
 		}
-		// emit log_named_uint("outcome ", outcome);
-		// emit log_named_uint("b ", sRA0);
-		// emit log_named_uint("b ", sRB0);
-		// emit log_named_uint("b ", sRA1);
-		// emit log_named_uint("b ", sRB1);
+
 		assertEq(sRB0-sRA0, d0);
 		assertEq(sRB1-sRA1, d1);
 	}
