@@ -397,8 +397,9 @@ contract OracleMarketsTest_StageBufferPeriodExpired is OracleMarketsTest {
         buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
         buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
         roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
-        stakeOutcome(oracle, _marketIdentifier, 0, 2*10**18, actor1);
-        stakeOutcome(oracle, _marketIdentifier, 1, 4*10**18, address(this)); // winning stake
+        stakeOutcome(oracle, _marketIdentifier, 0, 2*10**18, address(this));
+        stakeOutcome(oracle, _marketIdentifier, 1, 4*10**18, actor1); 
+        stakeOutcome(oracle, _marketIdentifier, 0, 8*10**18, address(this)); // winning stake
         roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
 
         /* 
@@ -408,11 +409,11 @@ contract OracleMarketsTest_StageBufferPeriodExpired is OracleMarketsTest {
         _marketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
         marketWithStakesOnSingleSide = _marketIdentifier;
         createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
-        buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
-        buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
+        buy(address(this), oracle, _marketIdentifier, 0, 10*10**18);
+        buy(actor1, oracle, _marketIdentifier, 5*10**18, 0);
         roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
-        stakeOutcome(oracle, _marketIdentifier, 0, 2*10**18, actor1);
-        stakeOutcome(oracle, _marketIdentifier, 0, 4*10**18, address(this)); // winning stake & but nothing to win
+        stakeOutcome(oracle, _marketIdentifier, 1, 2*10**18, actor1);
+        stakeOutcome(oracle, _marketIdentifier, 1, 4*10**18, address(this)); // winning stake, but nothing to win
         roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
     }
 
@@ -432,6 +433,32 @@ contract OracleMarketsTest_StageBufferPeriodExpired is OracleMarketsTest {
         checkRedeemStake(address(this), _oracle, _marketIdentifier, 0);
     }
 
+    function test_redeem_marketWithNoStakesAndEqualTrades() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithNoStakesAndEqualTrades;
+        checkRedeemWinning(address(this), _oracle, _marketIdentifier, 10*10**18, 0, 5*10**18);
+        checkRedeemWinning(actor1, _oracle, _marketIdentifier, 0, 10*10**18, 5*10**18);
+        checkOutcome(_oracle, _marketIdentifier, 2);
+        checkRedeemStake(address(this), _oracle, _marketIdentifier, 0);
+    }
 
+    function test_redeem_marketWithStakesOnBothSides() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSides;
+        checkRedeemWinning(address(this), _oracle, _marketIdentifier, 10*10**18, 0, 10*10**18);
+        checkOutcome(_oracle, _marketIdentifier, 0); // last staked outcome
+        checkRedeemWinning(actor1, _oracle, _marketIdentifier, 0, 5*10**18, 0);
+        checkRedeemStake(address(this), _oracle, _marketIdentifier, 2*10**18 + 8*10**18 + 4*10**18); // i.e. win amount = amount winner staked + loser's stake
+        checkRedeemStake(actor1, _oracle, _marketIdentifier, 0); // win amount = 0, since actor1 lost staking
+    }
 
+    function test_redeem_marketWithStakesOnSingleSide() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnSingleSide;
+        checkRedeemWinning(address(this), _oracle, _marketIdentifier, 0, 10*10**18, 10*10**18);
+        checkOutcome(_oracle, _marketIdentifier, 1); // last staked outcome
+        checkRedeemWinning(actor1, _oracle, _marketIdentifier, 5*10**18, 0, 0);
+        checkRedeemStake(address(this), _oracle, _marketIdentifier, 4*10**18); // winning stake, but they win nothing since opposition stake == 0
+        checkRedeemStake(actor1, _oracle, _marketIdentifier, 2*10**18);
+    }
 }

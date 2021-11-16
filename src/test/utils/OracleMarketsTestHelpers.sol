@@ -58,6 +58,7 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 		a = Math.getAmountCBySellTokens(a0, a1, r0, r1);
 
 		(uint t0, uint t1) = OracleMarkets(_oracle).getOutcomeTokenIds(_marketIdentifier);
+		giveApprovalERC1155(to, address(this), _oracle);
 		OracleMarkets(_oracle).safeTransferFrom(to, _oracle, t0, a0, '');
 		OracleMarkets(_oracle).safeTransferFrom(to, _oracle, t1, a1, '');
 
@@ -68,6 +69,13 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 		address _tokenC = getTokenC(_oracle, _marketIdentifier);
 		IERC20(_tokenC).transfer(_oracle, amount);
 		OracleMarkets(_oracle).stakeOutcome(_for, to, _marketIdentifier);
+	}
+
+	function giveApprovalERC1155(address _of, address to, address _oracle) public {
+		if (to == _of) return;
+		bytes memory data = abi.encodeWithSignature("setApprovalForAll(address,bool)", to, true);
+		(bool success,) = _of.call(abi.encodeWithSignature("send(address,bytes,bool)", _oracle, data, true));
+		require(success);
 	}
 
     function getTokenC(address _oracle, bytes32 _marketIdentifier) public view returns (address _tokenC) {
@@ -110,7 +118,7 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 		bt1 = OracleMarkets(_oracle).balanceOf(_of, t1);
 	}
 
-	function getStateDetail(address _oracle, bytes32 _marketIdentifier, uint index) public view returns(uint) {
+	function getStateDetail(address _oracle, bytes32 _marketIdentifier, uint index) public returns(uint) {
 		(
 			uint32 expireAtBlock,
 			uint32 donBufferEndsAtBlock,
@@ -122,7 +130,6 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 			uint8 outcome,
 			uint8 stage
 		) = OracleMarkets(_oracle).stateDetails(_marketIdentifier);
-
 		if (index == 0) return expireAtBlock;
 		if (index == 1) return donBufferEndsAtBlock;
 		if (index == 2) return resolutionEndsAtBlock;
@@ -209,6 +216,7 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 		(uint t0, uint t1) = getOutcomeTokenIds(_oracle, _marketIdentifier);
 
 		// transfer tokens
+		giveApprovalERC1155(_of, address(this), _oracle);
 		OracleMarkets(_oracle).safeTransferFrom(_of, _oracle, t0, a0, '');
 		OracleMarkets(_oracle).safeTransferFrom(_of, _oracle, t1, a1, '');
 
