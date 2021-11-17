@@ -24,9 +24,11 @@ estimate :; ./scripts/estimate-gas.sh ${contract}
 size   :; ./scripts/contract-size.sh ${contract}
 size-all :; ./scripts/contract-size-all.sh
 spit-abis :; ./scripts/spit-abis.sh
+gas-test :; ./scripts/gas-test.sh
 
 # Deployment helpers
 deploy :; @./scripts/deploy.sh
+deploy-dev :; @./scripts/deploy-dev.sh
 
 # arbitrum-rinkeby
 deploy-arb-rinkeby: export ETH_RPC_URL=https://rinkeby.arbitrum.io/rpc

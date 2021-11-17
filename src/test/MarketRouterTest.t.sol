@@ -41,7 +41,10 @@ contract MarketRouterTest is OracleMarketsTestHelpers {
         bytes32 _eventIdentifier = keccak256('activeMarketIdentifier');
         activeMarketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
         createAndFundMarket(oracle, address(this), _eventIdentifier, 10*10**18);
-
+        buy(address(this), oracle, activeMarketIdentifier, 10*10**18, 10*10**18);
+        
+        
+        giveApprovalERC1155(address(this), marketRouter, oracle); // give outcome tokens apporval
 
     }
 
@@ -59,7 +62,6 @@ contract MarketRouterTest is OracleMarketsTestHelpers {
         );
 
         bytes32 _marketIdentifier = MarketRouter(_marketRouter).getMarketIdentifier(address(this), _eventIdentifier, _oracle);
-
         checkOutcomeTokenBalance(address(this), _oracle, _marketIdentifier, 0, 10*10**18);
     }
 
@@ -81,9 +83,11 @@ contract MarketRouterTest is OracleMarketsTestHelpers {
         (uint r0, uint r1) = getOutcomeReserves(_oracle, _marketIdentifier);
         uint amount = Math.getAmountCToBuyTokens(amountOutToken0, amountOutToken1, r0, r1);
 
+        (uint bT0B, uint bT1B) = getOutcomeTokenBalance(address(this), _oracle, _marketIdentifier);
+
         MarketRouter(_marketRouter).buyExactTokensForMaxCTokens(amountOutToken0, amountOutToken1, amount, _oracle, _marketIdentifier);
 
-        checkOutcomeTokenBalance(address(this), _oracle, _marketIdentifier, amountOutToken0, amountOutToken1);
+        checkOutcomeTokenBalance(address(this), _oracle, _marketIdentifier, bT0B + amountOutToken0, bT1B + amountOutToken1);
     }
 
     function test_gas_buyExactTokensForMaxCTokens() public {
@@ -102,8 +106,54 @@ contract MarketRouterTest is OracleMarketsTestHelpers {
         (uint r0, uint r1) = getOutcomeReserves(_oracle, _marketIdentifier);
         uint aT0 = Math.getTokenAmountToBuyWithAmountC(0, 1, r0, r1, amountIn);
 
+        (uint bT0B, uint bT1B) = getOutcomeTokenBalance(address(this), _oracle, _marketIdentifier);
+
         MarketRouter(_marketRouter).buyMinTokensForExactCTokens(aT0, 0, amountIn, 1, _oracle, _marketIdentifier);
 
-        checkOutcomeTokenBalance(address(this), _oracle, _marketIdentifier, aT0, 0);
+        checkOutcomeTokenBalance(address(this), _oracle, _marketIdentifier, bT0B+aT0, bT1B);
+    }
+
+    function test_sellExactTokensForMinCTokens(uint120 a0, uint120 a1) public {
+        address _marketRouter = marketRouter;
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = activeMarketIdentifier;
+
+        // buy to sell later
+        buy(address(this), _oracle, _marketIdentifier, a0, a1);
+
+
+        (uint r0, uint r1) = getOutcomeReserves(_oracle, _marketIdentifier);
+        uint a = Math.getAmountCBySellTokens(a0, a1, r0, r1);
+
+        (uint bT0B, uint bT1B) = getOutcomeTokenBalance(address(this), _oracle, _marketIdentifier);
+
+        MarketRouter(_marketRouter).sellExactTokensForMinCTokens(a0, a1, a, _oracle, _marketIdentifier);
+
+        checkOutcomeTokenBalance(address(this), _oracle, _marketIdentifier, bT0B - a0, bT1B - a1);
+    }
+
+    function test_gas_sellExactTokensForMinCTokens() public {
+        address _marketRouter = marketRouter;
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = activeMarketIdentifier;
+        MarketRouter(_marketRouter).sellExactTokensForMinCTokens(5*10**18, 5*10**18, 4*10**18, _oracle, _marketIdentifier);
+    }
+
+    function test_sellMaxTokensForExactCTokens(uint120 a0, uint120 a1) public {
+        address _marketRouter = marketRouter;
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = activeMarketIdentifier;
+
+        // buy to sell later
+        buy(address(this), _oracle, _marketIdentifier, a0, a1);
+
+        (uint r0, uint r1) = getOutcomeReserves(_oracle, _marketIdentifier);
+        uint a = Math.getAmountCBySellTokens(a0, a1, r0, r1);
+
+        (uint bT0B, uint bT1B) = getOutcomeTokenBalance(address(this), _oracle, _marketIdentifier);
+
+        MarketRouter(_marketRouter).sellMaxTokensForExactCTokens(a0, a1, a, 1, _oracle, _marketIdentifier);
+
+        // checkOutcomeTokenBalance(address(this), _oracle, _marketIdentifier, bT0B - a0 , bT1B - a1);
     }
 }

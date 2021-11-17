@@ -73,9 +73,16 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 
 	function giveApprovalERC1155(address _of, address to, address _oracle) public {
 		if (to == _of) return;
+
 		bytes memory data = abi.encodeWithSignature("setApprovalForAll(address,bool)", to, true);
-		(bool success,) = _of.call(abi.encodeWithSignature("send(address,bytes,bool)", _oracle, data, true));
-		require(success);
+		if (_of == address(this)){
+			(bool success,) = _oracle.call(data);
+			require(success);
+		}
+		else{
+			(bool success,) = _of.call(abi.encodeWithSignature("send(address,bytes,bool)", _oracle, data, true));
+			require(success);
+		}
 	}
 
     function getTokenC(address _oracle, bytes32 _marketIdentifier) public view returns (address _tokenC) {
