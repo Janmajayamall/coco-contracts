@@ -28,8 +28,15 @@ contract MarketRouter {
         // place bet
         bytes32 marketIdentifier = getMarketIdentifier(msg.sender, eventIdentifier, oracle);
         TransferHelper.safeTransferFrom(tokenC, msg.sender, oracle, amountIn);
-        if (_for == 0) OracleMarkets(oracle).buy(amountIn, 0, msg.sender, marketIdentifier);
-        if (_for == 1) OracleMarkets(oracle).buy(0, amountIn, msg.sender, marketIdentifier);
+        uint a0;
+        uint a1;
+        if (_for == 0) {
+            a0 = Math.getTokenAmountToBuyWithAmountC(0, 1, fundingAmount, fundingAmount, amountIn);
+        }
+        if (_for == 1) {
+            a1 = Math.getTokenAmountToBuyWithAmountC(0, 0, fundingAmount, fundingAmount, amountIn);
+        }
+        OracleMarkets(oracle).buy(a0, a1, msg.sender, marketIdentifier);
     }
 
     /// @notice Buy exact amountOfToken0 & amountOfToken1 with collteral tokens <= amountInCMax

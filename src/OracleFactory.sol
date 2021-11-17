@@ -8,6 +8,7 @@ import './OracleMarkets.sol';
 contract OracleFactory is IOracleFactory {
     function createOracle(
         address delegate,
+        address manager,
         address _tokenC, 
         bool _isActive, 
         uint8 _feeNumerator, 
@@ -17,7 +18,7 @@ contract OracleFactory is IOracleFactory {
         uint32 _donBufferBlocks, 
         uint32 _resolutionBufferBlocks
     ) external override {
-        address oracle = address(new OracleMarkets(delegate));
+        address oracle = address(new OracleMarkets(delegate, delegate));
 
         OracleMarkets(oracle).updateCollateralToken(_tokenC);
         OracleMarkets(oracle).updateMarketConfig(

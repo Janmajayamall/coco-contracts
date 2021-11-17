@@ -23,10 +23,12 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
     mapping(address => uint) public cReserves;
 
     address public delegate;
+    address public manager;
 
-    constructor(address _delegate){
+    constructor(address _delegate, address _manager){
         // setup oracle
         delegate = _delegate;
+        manager = _manager;
     }
 
     function isMarketFunded(bytes32 marketIdentifier) internal view returns (bool) {
