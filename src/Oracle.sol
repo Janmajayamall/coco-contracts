@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import './interfaces/IOracleMarkets.sol';
+import './interfaces/IOracle.sol';
 import './interfaces/IERC20.sol';
 import './ERC1155.sol';
 
-contract OracleMarkets is ERC1155, IOracleMarkets {
+contract Oracle is ERC1155, IOracle {
     /*
         marketIdentifier = keccack256(abi.encode(creator, eventIdentifier, address(this)))
     */

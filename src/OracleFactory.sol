@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import './interfaces/IOracleFactory.sol';
-import './OracleMarkets.sol';
+import './Oracle.sol';
 
 contract OracleFactory is IOracleFactory {
     function createOracle(
@@ -18,10 +18,10 @@ contract OracleFactory is IOracleFactory {
         uint32 _donBufferBlocks, 
         uint32 _resolutionBufferBlocks
     ) external override {
-        address oracle = address(new OracleMarkets(delegate, manager));
+        address oracle = address(new Oracle(delegate, manager));
 
-        OracleMarkets(oracle).updateCollateralToken(_tokenC);
-        OracleMarkets(oracle).updateMarketConfig(
+        Oracle(oracle).updateCollateralToken(_tokenC);
+        Oracle(oracle).updateMarketConfig(
             _isActive, 
             _feeNumerator, 
             _feeDenominator,

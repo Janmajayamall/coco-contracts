@@ -2,15 +2,15 @@
 pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
-import "./../OracleMarkets.sol";
+import "./../Oracle.sol";
 import "./../MemeToken.sol";
-import "./../interfaces/IOracleMarkets.sol";
+import "./../interfaces/IOracle.sol";
 import "./utils/Hevm.sol";
 import "./../libraries/Math.sol";
-import "./utils/OracleMarketsTestHelpers.sol";
+import "./utils/OracleTestHelpers.sol";
 import "./utils/Actor.sol";
 
-contract OracleMarketsTest is OracleMarketsTestHelpers {
+contract OracleTest is OracleTestHelpers {
 
 	OracleConfig oracleConfig;
 	address oracle;
@@ -34,9 +34,9 @@ contract OracleMarketsTest is OracleMarketsTestHelpers {
     }
 
     function deployOracle() public {
-        oracle = address(new OracleMarkets(address(this), address(this)));
-        OracleMarkets(oracle).updateCollateralToken(tokenC);
-        OracleMarkets(oracle).updateMarketConfig(
+        oracle = address(new Oracle(address(this), address(this)));
+        Oracle(oracle).updateCollateralToken(tokenC);
+        Oracle(oracle).updateMarketConfig(
             oracleConfig.isActive, 
             oracleConfig.feeNumerator, 
             oracleConfig.feeDenominator, 
@@ -53,7 +53,7 @@ contract OracleMarketsTest is OracleMarketsTestHelpers {
 
 }
 
-contract OracleMarketsTest_StageCreated is OracleMarketsTest {
+contract OracleTest_StageCreated is OracleTest {
     function setUp() public {
         tokenC = deloyAndPrepTokenC(address(this));
         setOracleConfig();
@@ -64,7 +64,7 @@ contract OracleMarketsTest_StageCreated is OracleMarketsTest {
     function _createAndFundMarket() internal {
         address _oracle = oracle;
         IERC20(tokenC).transfer(_oracle, 10*10**18);
-        OracleMarkets(_oracle).createAndFundMarket(address(this), keccak256('default'));
+        Oracle(_oracle).createAndFundMarket(address(this), keccak256('default'));
     }
 
     function test_check_createAndFundMarket() public {
@@ -94,7 +94,7 @@ contract OracleMarketsTest_StageCreated is OracleMarketsTest {
     }     
 }
 
-contract OracleMarketsTest_StageFunded is OracleMarketsTest {
+contract OracleTest_StageFunded is OracleTest {
 
     bytes32 marketIdentifier;
 
@@ -140,7 +140,7 @@ contract OracleMarketsTest_StageFunded is OracleMarketsTest {
 
         IERC20(tokenC).transfer(_oracle, a);
 
-        OracleMarkets(_oracle).buy(a0, a1, address(this), _marketIdentifier);
+        Oracle(_oracle).buy(a0, a1, address(this), _marketIdentifier);
     }
 
     function testFail_buy_notExisitingMarketIdentifier() public {
@@ -150,7 +150,7 @@ contract OracleMarketsTest_StageFunded is OracleMarketsTest {
         IERC20(tokenC).transfer(_oracle, 10*10**18);
 
         // note - a0 & a1 is a lot less than a, so under normal situation this succeeds
-        OracleMarkets(_oracle).buy(1*10**18, 1*10**18, address(this), _marketIdentifier);
+        Oracle(_oracle).buy(1*10**18, 1*10**18, address(this), _marketIdentifier);
     }
 
 
@@ -191,10 +191,10 @@ contract OracleMarketsTest_StageFunded is OracleMarketsTest {
         // emit log_uint(r1);
 
         (uint t0, uint t1) = getOutcomeTokenIds(_oracle, _marketIdentifier);
-        OracleMarkets(_oracle).safeTransferFrom(address(this), _oracle, t0, a0, '');
-        OracleMarkets(_oracle).safeTransferFrom(address(this), _oracle, t1, a1, '');
+        Oracle(_oracle).safeTransferFrom(address(this), _oracle, t0, a0, '');
+        Oracle(_oracle).safeTransferFrom(address(this), _oracle, t1, a1, '');
 
-        OracleMarkets(_oracle).sell(a, address(this), _marketIdentifier);
+        Oracle(_oracle).sell(a, address(this), _marketIdentifier);
     }
 
     /* 
@@ -208,21 +208,21 @@ contract OracleMarketsTest_StageFunded is OracleMarketsTest {
         address _tokenC = tokenC;
         address _oracle = oracle;
         IERC20(_tokenC).transfer(_oracle, 10*10**18 + 1);
-        OracleMarkets(_oracle).buy(10*10**18, 10*10**18, address(this), marketIdentifier);
+        Oracle(_oracle).buy(10*10**18, 10*10**18, address(this), marketIdentifier);
     } 
 
     function test_gas_sell() public {
         address _oracle = oracle;
         bytes32 _marketIdentifier = marketIdentifier;
         (uint t0, uint t1) = getOutcomeTokenIds(_oracle, _marketIdentifier);
-        OracleMarkets(_oracle).safeTransferFrom(address(this), _oracle, t0, 10*10**18, '');
-        OracleMarkets(_oracle).safeTransferFrom(address(this), _oracle, t1, 10*10**18, '');
-        OracleMarkets(_oracle).sell(10*10**18-1, address(this), _marketIdentifier);
+        Oracle(_oracle).safeTransferFrom(address(this), _oracle, t0, 10*10**18, '');
+        Oracle(_oracle).safeTransferFrom(address(this), _oracle, t1, 10*10**18, '');
+        Oracle(_oracle).sell(10*10**18-1, address(this), _marketIdentifier);
     }
 
 }
 
-contract OracleMarketsTest_StageBuffer is OracleMarketsTest {
+contract OracleTest_StageBuffer is OracleTest {
 
     bytes32 marketIdentifier;
 
@@ -316,7 +316,7 @@ contract OracleMarketsTest_StageBuffer is OracleMarketsTest {
     function test_gas_stakeOutcome() public {
         address _oracle = oracle;
         IERC20(tokenC).transfer(_oracle, 10*10**18);
-        OracleMarkets(oracle).stakeOutcome(0, address(this), marketIdentifier);
+        Oracle(oracle).stakeOutcome(0, address(this), marketIdentifier);
     }
 
      /* 
@@ -324,7 +324,7 @@ contract OracleMarketsTest_StageBuffer is OracleMarketsTest {
      */
 }
 
-contract OracleMarketsTest_StageBufferPeriodExpired is OracleMarketsTest {
+contract OracleTest_StageBufferPeriodExpired is OracleTest {
 
     bytes32 marketWithNoStakesAndNoTrades; // resolves to 2
     bytes32 marketWithNoStakesAndBiasedTrades; // resolves to biased outcome
@@ -467,19 +467,19 @@ contract OracleMarketsTest_StageBufferPeriodExpired is OracleMarketsTest {
     function test_gas_redeemWinning_marketWithStakesOnBothSides() public {
         address _oracle = oracle;
         bytes32 _marketIdentifier = marketWithStakesOnBothSides;
-        (uint t0,) = OracleMarkets(_oracle).getOutcomeTokenIds(_marketIdentifier);
-        OracleMarkets(_oracle).safeTransferFrom(address(this), _oracle, t0, 10*10**18, '');
-        OracleMarkets(_oracle).redeemWinning(address(this), _marketIdentifier);
+        (uint t0,) = Oracle(_oracle).getOutcomeTokenIds(_marketIdentifier);
+        Oracle(_oracle).safeTransferFrom(address(this), _oracle, t0, 10*10**18, '');
+        Oracle(_oracle).redeemWinning(address(this), _marketIdentifier);
     }
 
     function test_gas_redeemStake_marketWithStakesOnBothSides() public {
         address _oracle = oracle;
         bytes32 _marketIdentifier = marketWithStakesOnBothSides;
-        OracleMarkets(_oracle).redeemStake(_marketIdentifier);
+        Oracle(_oracle).redeemStake(_marketIdentifier);
     }
 }
 
-contract OracleMarketsTest_StageEscalationLimitHitOracleResolves is OracleMarketsTest {
+contract OracleTest_StageEscalationLimitHitOracleResolves is OracleTest {
 
     /* 
     With stakes on both sides, oracle collects fee from the losing stake
@@ -598,7 +598,7 @@ contract OracleMarketsTest_StageEscalationLimitHitOracleResolves is OracleMarket
     }
 
     function testFail_setOutcomeToInvalidValue(uint8 outcome) public {
-        if (outcome >= 3) OracleMarkets(oracle).setOutcome(outcome, marketWithStakesOnBothSides);
+        if (outcome >= 3) Oracle(oracle).setOutcome(outcome, marketWithStakesOnBothSides);
         assertTrue(false);
     }
 
@@ -612,12 +612,12 @@ contract OracleMarketsTest_StageEscalationLimitHitOracleResolves is OracleMarket
     Gas Test
      */
     function test_gas_setOutcome() public {
-        OracleMarkets(oracle).setOutcome(0, marketWithStakesOnBothSides);
+        Oracle(oracle).setOutcome(0, marketWithStakesOnBothSides);
     }
 }
 
 
-contract OracleMarketsTest_StageResolutionPeriodExpired is OracleMarketsTest {
+contract OracleTest_StageResolutionPeriodExpired is OracleTest {
 
     bytes32 marketWithStakesOnBothSidesResolutionPeriodExpired;
 

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
-import "./../OracleMarkets.sol";
+import "./../Oracle.sol";
 import "./../MemeToken.sol";
-import "./../interfaces/IOracleMarkets.sol";
+import "./../interfaces/IOracle.sol";
 import "./utils/Hevm.sol";
 import "./../libraries/Math.sol";
 

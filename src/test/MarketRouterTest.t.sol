@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
-import "./utils/OracleMarketsTestHelpers.sol";
+import "./utils/OracleTestHelpers.sol";
 import "./../MarketRouter.sol";
-import "./../OracleMarkets.sol";
+import "./../Oracle.sol";
 import "./../interfaces/IERC20.sol";
 import "./../libraries/Math.sol";
 
-contract MarketRouterTest is OracleMarketsTestHelpers {
+contract MarketRouterTest is OracleTestHelpers {
     address oracle;
     address tokenC;
     address marketRouter;
@@ -18,9 +18,9 @@ contract MarketRouterTest is OracleMarketsTestHelpers {
     function setUp() public {
         tokenC = deloyAndPrepTokenC(address(this));
         
-        oracle = address(new OracleMarkets(address(this), address(this)));
-        OracleMarkets(oracle).updateCollateralToken(tokenC);
-        OracleMarkets(oracle).updateMarketConfig(
+        oracle = address(new Oracle(address(this), address(this)));
+        Oracle(oracle).updateCollateralToken(tokenC);
+        Oracle(oracle).updateMarketConfig(
            true,
            10,
            100,

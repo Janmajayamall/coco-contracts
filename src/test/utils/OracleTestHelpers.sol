@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
-import "./../../OracleMarkets.sol";
+import "./../../Oracle.sol";
 import "./../../libraries/Math.sol";
 import "./../../MemeToken.sol";
 import "./Hevm.sol";
 import "./../../interfaces/IERC20.sol";
 
-contract OracleMarketsTestHelpers is DSTest, Hevm {
+contract OracleTestHelpers is DSTest, Hevm {
 
 	struct OracleConfig {
 		address tokenC;
@@ -40,35 +40,35 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 	}
 
 	function createAndFundMarket(address _oracle, address _creator, bytes32 _eventIdentifier, uint fundAmount) public {
-		address _tokenC = OracleMarkets(_oracle).collateralToken();
+		address _tokenC = Oracle(_oracle).collateralToken();
 		IERC20(_tokenC).transfer(_oracle, fundAmount);
-		OracleMarkets(_oracle).createAndFundMarket(_creator, _eventIdentifier);
+		Oracle(_oracle).createAndFundMarket(_creator, _eventIdentifier);
 	}
 
 	function buy(address to, address _oracle, bytes32 _marketIdentifier, uint a0, uint a1) public returns(uint a) {
         address _tokenC = getTokenC(_oracle, _marketIdentifier);
-		(uint r0, uint r1) = OracleMarkets(_oracle).outcomeReserves(_marketIdentifier);
+		(uint r0, uint r1) = Oracle(_oracle).outcomeReserves(_marketIdentifier);
 		a = Math.getAmountCToBuyTokens(a0, a1, r0, r1);
 		IERC20(_tokenC).transfer(_oracle, a);
-		OracleMarkets(_oracle).buy(a0, a1, to, _marketIdentifier);
+		Oracle(_oracle).buy(a0, a1, to, _marketIdentifier);
 	}
 
 	function sell(address to, address _oracle, bytes32 _marketIdentifier, uint a0, uint a1) public returns (uint a) {
-		(uint r0, uint r1) = OracleMarkets(_oracle).outcomeReserves(_marketIdentifier);
+		(uint r0, uint r1) = Oracle(_oracle).outcomeReserves(_marketIdentifier);
 		a = Math.getAmountCBySellTokens(a0, a1, r0, r1);
 
-		(uint t0, uint t1) = OracleMarkets(_oracle).getOutcomeTokenIds(_marketIdentifier);
+		(uint t0, uint t1) = Oracle(_oracle).getOutcomeTokenIds(_marketIdentifier);
 		giveApprovalERC1155(to, address(this), _oracle);
-		OracleMarkets(_oracle).safeTransferFrom(to, _oracle, t0, a0, '');
-		OracleMarkets(_oracle).safeTransferFrom(to, _oracle, t1, a1, '');
+		Oracle(_oracle).safeTransferFrom(to, _oracle, t0, a0, '');
+		Oracle(_oracle).safeTransferFrom(to, _oracle, t1, a1, '');
 
-		OracleMarkets(_oracle).sell(a, to, _marketIdentifier);
+		Oracle(_oracle).sell(a, to, _marketIdentifier);
 	}
 
 	function stakeOutcome(address _oracle, bytes32 _marketIdentifier, uint _for, uint amount, address to) public {
 		address _tokenC = getTokenC(_oracle, _marketIdentifier);
 		IERC20(_tokenC).transfer(_oracle, amount);
-		OracleMarkets(_oracle).stakeOutcome(_for, to, _marketIdentifier);
+		Oracle(_oracle).stakeOutcome(_for, to, _marketIdentifier);
 	}
 
 	function giveApprovalERC1155(address _of, address to, address _oracle) public {
@@ -91,31 +91,31 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 
 	function getTokenCResereves(address _oracle, bytes32 _marketIdentifier) public view returns (uint){
 		address _tokenC = getTokenC(_oracle, _marketIdentifier);
-		return OracleMarkets(_oracle).cReserves(_tokenC);
+		return Oracle(_oracle).cReserves(_tokenC);
 	}
 
     function getMarketDetails(address _oracle, bytes32 _marketIdentifier) public view returns (address, uint32, uint32) {
-        return OracleMarkets(_oracle).marketDetails(_marketIdentifier);
+        return Oracle(_oracle).marketDetails(_marketIdentifier);
     }
 
 	function getMarketIdentifier(address _oracle, address _creator, bytes32 _eventIdentifier) public view returns (bytes32){
-		return OracleMarkets(_oracle).getMarketIdentifier(_creator, _eventIdentifier);
+		return Oracle(_oracle).getMarketIdentifier(_creator, _eventIdentifier);
 	}
 
 	function getOutcomeReserves(address _oracle,  bytes32 _marketIdentifier) public view returns (uint r0, uint r1) {
-		(r0, r1) = OracleMarkets(_oracle).outcomeReserves(_marketIdentifier);
+		(r0, r1) = Oracle(_oracle).outcomeReserves(_marketIdentifier);
 	}
 
 	function getStakingReserves(address _oracle,  bytes32 _marketIdentifier) public view returns (uint r0, uint r1) {
-		(r0, r1) = OracleMarkets(_oracle).stakingReserves(_marketIdentifier);
+		(r0, r1) = Oracle(_oracle).stakingReserves(_marketIdentifier);
 	}
 
 	function getOutcomeTokenIds(address _oracle,  bytes32 _marketIdentifier) public pure returns (uint t0, uint t1) {
-		(t0, t1) = OracleMarkets(_oracle).getOutcomeTokenIds(_marketIdentifier);
+		(t0, t1) = Oracle(_oracle).getOutcomeTokenIds(_marketIdentifier);
 	}
 
 	function getReserveTokenIds(address _oracle,  bytes32 _marketIdentifier) public pure returns (uint sTId0, uint sTId1){
-		(sTId0, sTId1) = OracleMarkets(_oracle).getReserveTokenIds(_marketIdentifier);
+		(sTId0, sTId1) = Oracle(_oracle).getReserveTokenIds(_marketIdentifier);
 	}
 
 	function getTokenCBalance(address _of, address _oracle,  bytes32 _marketIdentifier) public view returns (uint b) {
@@ -125,8 +125,8 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 
 	function getOutcomeTokenBalance(address _of, address _oracle,  bytes32 _marketIdentifier) public view returns (uint bt0, uint bt1) {
 		(uint t0, uint t1) = getOutcomeTokenIds(_oracle, _marketIdentifier);
-		bt0 = OracleMarkets(_oracle).balanceOf(_of, t0);
-		bt1 = OracleMarkets(_oracle).balanceOf(_of, t1);
+		bt0 = Oracle(_oracle).balanceOf(_of, t0);
+		bt1 = Oracle(_oracle).balanceOf(_of, t1);
 	}
 
 	function getStateDetail(address _oracle, bytes32 _marketIdentifier, uint index) public view returns(uint) {
@@ -140,7 +140,7 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 			uint16 donEscalationLimit,
 			uint8 outcome,
 			uint8 stage
-		) = OracleMarkets(_oracle).stateDetails(_marketIdentifier);
+		) = Oracle(_oracle).stateDetails(_marketIdentifier);
 		if (index == 0) return expireAtBlock;
 		if (index == 1) return donBufferEndsAtBlock;
 		if (index == 2) return resolutionEndsAtBlock;
@@ -202,8 +202,8 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 
 	function checkOutcomeTokenBalance(address _of, address _oracle, bytes32 _marketIdentifier, uint et0, uint et1) public {
 		(uint t0, uint t1) = getOutcomeTokenIds(_oracle, _marketIdentifier);
-		assertEq(OracleMarkets(_oracle).balanceOf(_of, t0), et0);
-		assertEq(OracleMarkets(_oracle).balanceOf(_of, t1), et1);
+		assertEq(Oracle(_oracle).balanceOf(_of, t0), et0);
+		assertEq(Oracle(_oracle).balanceOf(_of, t1), et1);
 	}
 
 	function checkTokenCBalance(address _of, address _oracle, bytes32 _marketIdentifier, uint eb) public {
@@ -212,18 +212,18 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 
 	function checkStake(address _of, address _oracle, bytes32 _marketIdentifier, uint eb0, uint eb1) public {
 		(uint sTId0, uint sTId1) = getReserveTokenIds(_oracle, _marketIdentifier);
-		assertEq(OracleMarkets(_oracle).balanceOf(_of, sTId0), eb0);
-		assertEq(OracleMarkets(_oracle).balanceOf(_of, sTId1), eb1);
+		assertEq(Oracle(_oracle).balanceOf(_of, sTId0), eb0);
+		assertEq(Oracle(_oracle).balanceOf(_of, sTId1), eb1);
 	}
 
 	function checkTokenCReserveMatchesBalance(address _oracle, bytes32 _marketIdentifier) public {
 		address _tokenC = getTokenC(_oracle, _marketIdentifier);
-		assertEq(OracleMarkets(_oracle).cReserves(_tokenC), IERC20(_tokenC).balanceOf(_oracle));
+		assertEq(Oracle(_oracle).cReserves(_tokenC), IERC20(_tokenC).balanceOf(_oracle));
 	}
 
 	function checkTokenCReserves(address _oracle, bytes32 _marketIdentifier, uint v) public {
 		address _tokenC = getTokenC(_oracle, _marketIdentifier);
-		assertEq(OracleMarkets(_oracle).cReserves(_tokenC), v);
+		assertEq(Oracle(_oracle).cReserves(_tokenC), v);
 	}
 
 	function checkRedeemWinning(address _of, address _oracle, bytes32 _marketIdentifier, uint a0, uint a1, uint eW) public {
@@ -233,10 +233,10 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 
 		// transfer tokens
 		giveApprovalERC1155(_of, address(this), _oracle);
-		OracleMarkets(_oracle).safeTransferFrom(_of, _oracle, t0, a0, '');
-		OracleMarkets(_oracle).safeTransferFrom(_of, _oracle, t1, a1, '');
+		Oracle(_oracle).safeTransferFrom(_of, _oracle, t0, a0, '');
+		Oracle(_oracle).safeTransferFrom(_of, _oracle, t1, a1, '');
 
-		OracleMarkets(_oracle).redeemWinning(_of, _marketIdentifier);
+		Oracle(_oracle).redeemWinning(_of, _marketIdentifier);
 
 		uint tokenCBalanceAfter = getTokenCBalance(_of, _oracle, _marketIdentifier);
 
@@ -247,10 +247,10 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 		uint tokenCBalanceBefore = getTokenCBalance(_of, _oracle, _marketIdentifier);
 
 		/* 
-		redeemStake is only function in OracleMarkets where msg.sender matters
+		redeemStake is only function in Oracle where msg.sender matters
 		 */
 		if (_of == address(this)){
-			OracleMarkets(_oracle).redeemStake(_marketIdentifier);
+			Oracle(_oracle).redeemStake(_marketIdentifier);
 		}else{
 			bytes memory data = abi.encodeWithSignature("redeemStake(bytes32)", _marketIdentifier);
 			(bool success, ) = _of.call(abi.encodeWithSignature("send(address,bytes,bool)", _oracle, data, true));
@@ -268,7 +268,7 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 		uint tokenCBalanceBefore = getTokenCBalance(address(this), _oracle, _marketIdentifier);	
 		(uint sRB0, uint sRB1) = getStakingReserves(_oracle, _marketIdentifier);
 	
-		OracleMarkets(_oracle).setOutcome(uint8(outcome), _marketIdentifier);
+		Oracle(_oracle).setOutcome(uint8(outcome), _marketIdentifier);
 
 		// estimate collection
 		uint eFeeCollection;
@@ -313,7 +313,7 @@ contract OracleMarketsTestHelpers is DSTest, Hevm {
 	// 		uint16 donEscalationLimit,
 	// 		uint8 outcome,
 	// 		uint8 stage
-	// 	) = OracleMarkets(_oracle).stateDetails(_marketIdentifier);
+	// 	) = Oracle(_oracle).stateDetails(_marketIdentifier);
 	// }
 
 	/* 

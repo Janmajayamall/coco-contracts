@@ -7,4 +7,4 @@ set -eo pipefail
 
 MarketRouter=$(spit_abi MarketRouter)
 OracleFactory=$(spit_abi OracleFactory)
-OracleMarkets=$(spit_abi OracleMarkets)
+Oracle=$(spit_abi Oracle)

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
-import "./../OracleMarkets.sol";
+import "./../Oracle.sol";
 import "./../MemeToken.sol";
 
 contract Normal is DSTest {
@@ -13,9 +13,9 @@ contract Normal is DSTest {
 		tokenC = address(new MemeToken());
 		MemeToken(tokenC).mint(address(this), type(uint).max);
 
-		oracle = address(new OracleMarkets(address(this), address(this)));
-		OracleMarkets(oracle).updateCollateralToken(tokenC);
-		OracleMarkets(oracle).updateMarketConfig(
+		oracle = address(new Oracle(address(this), address(this)));
+		Oracle(oracle).updateCollateralToken(tokenC);
+		Oracle(oracle).updateMarketConfig(
 			true,
 			10,
 			100,
@@ -29,9 +29,9 @@ contract Normal is DSTest {
 	}
 
 	function test_createOracle() public {
-		address oracle = address(new OracleMarkets(address(this), address(this)));
-		OracleMarkets(oracle).updateCollateralToken(address(this));
-		OracleMarkets(oracle).updateMarketConfig(
+		address oracle = address(new Oracle(address(this), address(this)));
+		Oracle(oracle).updateCollateralToken(address(this));
+		Oracle(oracle).updateMarketConfig(
 			true,
 			10,
 			100,
@@ -43,10 +43,10 @@ contract Normal is DSTest {
 	}
 
 	function test_creatMarket() public {
-		OracleMarkets(oracle).collateralToken();
-		(,,,,,,bool isActive) = OracleMarkets(oracle).marketConfig();
+		Oracle(oracle).collateralToken();
+		(,,,,,,bool isActive) = Oracle(oracle).marketConfig();
 		require(isActive);
-		OracleMarkets(oracle).createAndFundMarket(address(this), keccak256('E'));
+		Oracle(oracle).createAndFundMarket(address(this), keccak256('E'));
 	}
 
 

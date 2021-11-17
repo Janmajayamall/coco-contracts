@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IOracleMarkets {
+interface IOracle {
 
     struct Staking {
         uint256 lastAmountStaked;
