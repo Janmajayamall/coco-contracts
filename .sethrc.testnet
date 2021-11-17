@@ -1,0 +1,4 @@
+# Set an address as the default sender
+# Look for my key files in a custom directory
+export ETH_FROM=0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6
+export ETH_RPC_URL=http://127.0.0.1:8545

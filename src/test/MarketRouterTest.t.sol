@@ -48,21 +48,39 @@ contract MarketRouterTest is OracleMarketsTestHelpers {
 
     }
 
-    function test_createFundBetOnMarket() public {
+    function test_createFundBetOnMarket(uint120 fundingAmount, uint120 amountIn, uint _for) public {
+        if (fundingAmount == 0) return;
+        unchecked {
+            uint b = IERC20(tokenC).balanceOf(address(this));
+            if (fundingAmount + amountIn < fundingAmount) return;
+            if ((b - (fundingAmount + amountIn)) > b) return;
+        }
+        _for = _for %2 ;
+
         address _marketRouter = marketRouter;
         address _oracle = oracle;
         bytes32 _eventIdentifier = keccak256('eventIdentifier');
+        bytes32 _marketIdentifier = MarketRouter(_marketRouter).getMarketIdentifier(address(this), _eventIdentifier, _oracle);
 
         MarketRouter(_marketRouter).createFundBetOnMarket(
             _eventIdentifier, 
             _oracle, 
-            10*10**18, 
-            10*10**18, 
-            1
+            fundingAmount,
+            amountIn, 
+            _for
         );
 
-        bytes32 _marketIdentifier = MarketRouter(_marketRouter).getMarketIdentifier(address(this), _eventIdentifier, _oracle);
-        checkOutcomeTokenBalance(address(this), _oracle, _marketIdentifier, 0, 10*10**18);
+        
+        uint a0;
+        uint a1;
+        if (_for == 0) {
+            a0 = Math.getTokenAmountToBuyWithAmountC(0, 1, fundingAmount, fundingAmount, amountIn);
+        }
+        if (_for == 1) {
+            a1 = Math.getTokenAmountToBuyWithAmountC(0, 0, fundingAmount, fundingAmount, amountIn);
+        }
+
+        checkOutcomeTokenBalance(address(this), _oracle, _marketIdentifier, a0, a1);
     }
 
     function test_gas_createFundBetOnMarket() public {

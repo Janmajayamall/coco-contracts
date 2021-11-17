@@ -133,7 +133,8 @@ library Math {
                     y := div(safeMul(r0,r1),denom)
                 }
             }
-            tokenAmount := safeSub(safeSub(x,y),1)
+            if eq(x,y) {tokenAmount := 0}
+            if not(eq(x,y)) {tokenAmount := safeSub(safeSub(x,y),1)}
         }
         // require(fixedTokenIndex < 2);
         // uint x;

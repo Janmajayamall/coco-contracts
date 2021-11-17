@@ -5,7 +5,7 @@ set -eo pipefail
 # import the deployment helpers
 . $(dirname $0)/common.sh
 
-Deploy.
+# Deploy.
 OracleFactory=$(deploy OracleFactory)
 MemeToken=$(deploy MemeToken)
 MarketRouter=$(deploy MarketRouter)

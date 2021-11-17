@@ -32,7 +32,6 @@ deploy-dev :; @./scripts/deploy-dev.sh
 
 # testnet
 deploy-testnet: export ETH_RPC_URL=http://127.0.0.1:8545
-deploy-testnet: export ETH_FROM=0x86e75D6415990b2b8382dDb1C8e2339184fD285a
 deploy-testnet: deploy-dev
 
 # arbitrum-rinkeby

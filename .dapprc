@@ -6,6 +6,7 @@ export DAPP_SOLC_VERSION=0.8.6
 export DAPP_LINK_TEST_LIBRARIES=0
 export DAPP_TEST_VERBOSITY=1
 export DAPP_TEST_SMTTIMEOUT=500000
+export DAPP_TEST_BALANCE=115792089237316195423570985008687907853269984665640564039457584007913129639935
 
 # Optimize your contracts before deploying to reduce runtime execution costs.
 # Check out the docs to learn more: https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#optimizer-options
