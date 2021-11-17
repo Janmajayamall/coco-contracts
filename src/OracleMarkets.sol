@@ -441,7 +441,12 @@ contract OracleMarkets is ERC1155, IOracleMarkets {
     function updateDelegate(address _delegate) external {
         require(msg.sender == delegate);
         delegate = _delegate;
-
         emit DelegateChanged(_delegate);
+    }
+
+    function updateManager(address _manager) external {
+        require(msg.sender == delegate);
+        manager = _manager;
+        emit OracleConfigUpdated();
     }
 }

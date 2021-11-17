@@ -13,7 +13,7 @@ contract Normal is DSTest {
 		tokenC = address(new MemeToken());
 		MemeToken(tokenC).mint(address(this), type(uint).max);
 
-		oracle = address(new OracleMarkets(address(this)));
+		oracle = address(new OracleMarkets(address(this), address(this)));
 		OracleMarkets(oracle).updateCollateralToken(tokenC);
 		OracleMarkets(oracle).updateMarketConfig(
 			true,
@@ -29,7 +29,7 @@ contract Normal is DSTest {
 	}
 
 	function test_createOracle() public {
-		address oracle = address(new OracleMarkets(address(this)));
+		address oracle = address(new OracleMarkets(address(this), address(this)));
 		OracleMarkets(oracle).updateCollateralToken(address(this));
 		OracleMarkets(oracle).updateMarketConfig(
 			true,

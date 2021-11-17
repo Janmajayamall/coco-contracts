@@ -7,6 +7,7 @@ interface IOracleFactory {
 
     function createOracle(
         address delegate,
+        address manager,
         address _tokenC, 
         bool _isActive, 
         uint8 _feeNumerator, 

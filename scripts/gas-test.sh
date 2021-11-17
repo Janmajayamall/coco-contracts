@@ -17,8 +17,8 @@ Oracle=0xc45c26f522f80fc78eef6fd70f8a076e0df8dd0c
 # seth send $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256) --gas $estimate
 
 # # create a new oracle
-# estimate=$(seth estimate $OracleFactory "createOracle(address,address,bool,uint8,uint8,uint16,uint32,uint32,uint32)" $DEPLOYER $MemeToken true 1 10 5 500 100 100)
-# seth send $OracleFactory "createOracle(address,address,bool,uint8,uint8,uint16,uint32,uint32,uint32)" $DEPLOYER $MemeToken true 1 10 5 500 100 100 --gas $estimate
+# estimate=$(seth estimate $OracleFactory "createOracle(address,address,address,bool,uint8,uint8,uint16,uint32,uint32,uint32)" $DEPLOYER $DEPLOYER $MemeToken true 1 10 5 500 100 100)
+# seth estimate $OracleFactory "createOracle(address,address,address,bool,uint8,uint8,uint16,uint32,uint32,uint32)" $DEPLOYER $DEPLOYER $MemeToken true 1 10 5 500 100 100 --gas $estimate
 
 # create a new market
 estimate=$(seth estimate $MarketRouter "createFundBetOnMarket(bytes32,address,uint256,uint256,uint256)" $(seth --to-bytes32 $(seth --to-hex '1211212')) $Oracle $(seth --to-wei 1 eth) $(seth --to-wei 1 eth) 1)

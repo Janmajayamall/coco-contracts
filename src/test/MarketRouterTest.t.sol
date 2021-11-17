@@ -18,7 +18,7 @@ contract MarketRouterTest is OracleMarketsTestHelpers {
     function setUp() public {
         tokenC = deloyAndPrepTokenC(address(this));
         
-        oracle = address(new OracleMarkets(address(this)));
+        oracle = address(new OracleMarkets(address(this), address(this)));
         OracleMarkets(oracle).updateCollateralToken(tokenC);
         OracleMarkets(oracle).updateMarketConfig(
            true,
