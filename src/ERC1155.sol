@@ -1,5 +1,7 @@
 pragma solidity ^0.8.0;
 
+import "./interfaces/IERC1155.sol";
+
 /**
  * @title Standard ERC1155 token
  *
@@ -7,8 +9,7 @@ pragma solidity ^0.8.0;
  * See https://eips.ethereum.org/EIPS/eip-1155
  * Based on code by: https://github.com/enjin/erc-1155
  */
-contract ERC1155 
-{
+contract ERC1155 is IERC1155 {
 
     // Mapping from token ID to owner balances
     mapping (uint256 => mapping(address => uint256)) private _balances;
@@ -29,13 +30,14 @@ contract ERC1155
         // );
     }
 
-    /**
+    /*
         @dev Get the specified address' balance for token with specified ID.
         @param owner The address of the token holder
-        @param id ID of the token
+        @param id
+         ID of the token
         @return The owner's balance of the token type requested
      */
-    function balanceOf(address owner, uint256 id) public view returns (uint256) {
+    function balanceOf(address owner, uint256 id) public override view returns (uint256) {
         require(owner != address(0), "ERC1155: balance query for the zero address");
         return _balances[id][owner];
     }
@@ -51,6 +53,7 @@ contract ERC1155
         uint256[] memory ids
     )
         public
+        override
         view
         returns (uint256[] memory)
     {
@@ -72,7 +75,7 @@ contract ERC1155
      * @param operator address to set the approval
      * @param approved representing the status of the approval to be set
      */
-    function setApprovalForAll(address operator, bool approved) external {
+    function setApprovalForAll(address operator, bool approved) external override {
         _operatorApprovals[msg.sender][operator] = approved;
         // emit ApprovalForAll(msg.sender, operator, approved);
     }
@@ -83,7 +86,7 @@ contract ERC1155
         @param operator  Address of authorized operator
         @return           True if the operator is approved, false if not
     */
-    function isApprovedForAll(address owner, address operator) external view returns (bool) {
+    function isApprovedForAll(address owner, address operator) external override view returns (bool) {
         return _operatorApprovals[owner][operator];
     }
 
@@ -105,6 +108,7 @@ contract ERC1155
         bytes memory data
     )
         public
+        override
     {
         require(to != address(0), "ERC1155: target address must be non-zero");
         require(
@@ -115,7 +119,7 @@ contract ERC1155
         _balances[id][from] -= value;
         _balances[id][to] += value;
 
-        // emit TransferSingle(msg.sender, from, to, id, value);
+        emit TransferSingle(msg.sender, from, to, id, value);
 
         // _doSafeTransferAcceptanceCheck(msg.sender, from, to, id, value, data);
     }
@@ -139,6 +143,7 @@ contract ERC1155
         bytes calldata data
     )
         public
+        override
     {
         require(ids.length == values.length, "ERC1155: IDs and values must have same lengths");
         require(to != address(0), "ERC1155: target address must be non-zero");
@@ -155,7 +160,7 @@ contract ERC1155
             _balances[id][to] += value;
         }
 
-        // emit TransferBatch(msg.sender, from, to, ids, values);
+        emit TransferBatch(msg.sender, from, to, ids, values);
 
         // _doSafeBatchTransferAcceptanceCheck(msg.sender, from, to, ids, values, data);
     }
@@ -171,7 +176,7 @@ contract ERC1155
         require(to != address(0), "ERC1155: mint to the zero address");
 
         _balances[id][to] += value;
-        // emit TransferSingle(msg.sender, address(0), to, id, value);
+        emit TransferSingle(msg.sender, address(0), to, id, value);
 
         // _doSafeTransferAcceptanceCheck(msg.sender, address(0), to, id, value, data);
     }
