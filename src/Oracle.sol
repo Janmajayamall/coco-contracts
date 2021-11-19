@@ -362,7 +362,7 @@ contract Oracle is ERC1155, IOracle {
         
         StateDetails memory _stateDetails = stateDetails[marketIdentifier];
         if (_stateDetails.stage == uint8(Stages.MarketFunded) 
-            && block.number > _stateDetails.expireAtBlock
+            && block.number >= _stateDetails.expireAtBlock
             && _stateDetails.donEscalationLimit == 0
             && _stateDetails.donBufferBlocks != 0){
             // donEscalationLimit == 0, indicates direct transition to MarketResolve after Market expiry

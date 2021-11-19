@@ -1,4 +1,8 @@
-Few points
+## Tests consideration
+
+1.
+
+## Points to note
 
 1. One could consecutively stake for the right outcome, once they spot someone staking on the wrong outcome so that they can get their stake.
    a. Thing to note here is that this is only possible if they are staking on the right outcome,
@@ -15,5 +19,5 @@ Few points
    fees from the winning stake, this strategy is still profitable.
    Also, I would argue against imposing oracle fee on winning stake because of unecessary complications it accompanies.
 
-2. Why oracle fee is only deducted from the losing stake?
+2. Why oracle fee is only deducted from the losing stake? \
    It's simple. Winners don't lose anything & receive some share of the loser.
