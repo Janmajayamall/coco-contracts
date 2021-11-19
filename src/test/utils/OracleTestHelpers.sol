@@ -118,6 +118,10 @@ contract OracleTestHelpers is DSTest, Hevm {
 		(sTId0, sTId1) = Oracle(_oracle).getReserveTokenIds(_marketIdentifier);
 	}
 
+	function getStaking(address _oracle,  bytes32 _marketIdentifier) public view returns (uint256 lastAmountStaked, address staker0, address staker1, uint8 lastOutcomeStaked) {
+		(lastAmountStaked, staker0, staker1, lastOutcomeStaked) = Oracle(_oracle).staking(_marketIdentifier);
+	}
+
 	function getTokenCBalance(address _of, address _oracle,  bytes32 _marketIdentifier) public view returns (uint b) {
 		address _tokenC = getTokenC(_oracle, _marketIdentifier);
 		b = IERC20(_tokenC).balanceOf(_of);

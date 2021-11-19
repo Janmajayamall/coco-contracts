@@ -51,6 +51,13 @@ contract OracleTest is OracleTestHelpers {
         actor1 = address(new Actor());
     }
 
+    function prepRandomMarket() public returns (address _oracle, bytes32 _marketIdentifier){
+        _oracle = oracle;
+        bytes32 _eventIdentifier = keccak256(abi.encode(block.timestamp));
+        _marketIdentifier = getMarketIdentifier(_oracle, address(this), _eventIdentifier);
+        createAndFundMarket(oracle, address(this), _eventIdentifier, 10*10**18);
+    }
+
 }
 
 contract OracleTest_StageCreated is OracleTest {
@@ -91,7 +98,7 @@ contract OracleTest_StageCreated is OracleTest {
 
     function test_gas_createAndFundMarket() public {
         _createAndFundMarket();
-    }     
+    }   
 }
 
 contract OracleTest_StageFunded is OracleTest {
@@ -198,10 +205,6 @@ contract OracleTest_StageFunded is OracleTest {
     }
 
     /* 
-    Write tests for invalid stage access
-     */
-
-    /* 
     Gas specific tests
      */
     function test_gas_buy() public {
@@ -218,6 +221,33 @@ contract OracleTest_StageFunded is OracleTest {
         Oracle(_oracle).safeTransferFrom(address(this), _oracle, t0, 10*10**18, '');
         Oracle(_oracle).safeTransferFrom(address(this), _oracle, t1, 10*10**18, '');
         Oracle(_oracle).sell(10*10**18-1, address(this), _marketIdentifier);
+    }
+
+
+    /* 
+    Invalid stage access
+     */  
+    function testFail_stakeOutcome() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        buy(address(this), _oracle, _marketIdentifier, 10*10**18, 10*10**18);
+        stakeOutcome(_oracle, _marketIdentifier, 0, 10*10**18, address(this));
+    }
+
+    function testFail_redeemWinning() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        buy(address(this), _oracle, _marketIdentifier, 10*10**18, 10*10**18);
+        Oracle(_oracle).redeemWinning(address(this), _marketIdentifier);
+    }
+
+    function testFail_redeemStake() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        buy(address(this), _oracle, _marketIdentifier, 10*10**18, 10*10**18);
+        Oracle(_oracle).redeemStake(_marketIdentifier);
+    }
+
+    function testFail_setOutcome() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        Oracle(_oracle).setOutcome(0, _marketIdentifier);
     }
 
 }
@@ -319,9 +349,36 @@ contract OracleTest_StageBuffer is OracleTest {
         Oracle(oracle).stakeOutcome(0, address(this), marketIdentifier);
     }
 
-     /* 
-    Write tests for invalid stage access
+    /* 
+    Invalid stage access
      */
+    function testFail_buy() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        roll(getStateDetail(_oracle, _marketIdentifier, 0)); // expires market
+        buy(address(this), _oracle, _marketIdentifier, 10*10**18, 10*10**18);
+    }
+
+    function testFail_sell() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        roll(getStateDetail(_oracle, _marketIdentifier, 0)); // expires market
+        Oracle(oracle).sell(10*10**18, address(this), _marketIdentifier);
+    }
+
+    function test_redeemWinning() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        Oracle(_oracle).redeemWinning(address(this), _marketIdentifier);
+    }
+
+    function testFail_redeemStake() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        Oracle(_oracle).redeemStake(_marketIdentifier);
+    }
+
+    function testFail_setOutcome() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        Oracle(_oracle).setOutcome(0, _marketIdentifier);
+    }
+
 }
 
 contract OracleTest_StageBufferPeriodExpired is OracleTest {
@@ -459,9 +516,6 @@ contract OracleTest_StageBufferPeriodExpired is OracleTest {
     }
 
     /* 
-    Test for invalid stages */
-
-    /* 
     Gas Test
      */
     function test_gas_redeemWinning_marketWithStakesOnBothSides() public {
@@ -476,6 +530,33 @@ contract OracleTest_StageBufferPeriodExpired is OracleTest {
         address _oracle = oracle;
         bytes32 _marketIdentifier = marketWithStakesOnBothSides;
         Oracle(_oracle).redeemStake(_marketIdentifier);
+    }
+
+    /* 
+    Invalid stage access
+     */
+    function testFail_buy() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
+        buy(address(this), _oracle, _marketIdentifier, 10*10**18, 10*10**18);
+    }
+
+    function testFail_sell() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
+        Oracle(oracle).sell(10*10**18, address(this), _marketIdentifier);
+    }
+
+    function testFail_stakeOutcome() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
+        stakeOutcome(_oracle, _marketIdentifier, 0, 10*10**18, address(this));
+    }
+
+    function testFail_setOutcome() public {
+        (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
+        roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
+        Oracle(_oracle).setOutcome(0, _marketIdentifier);
     }
 }
 
@@ -554,9 +635,6 @@ contract OracleTest_StageEscalationLimitHitOracleResolves is OracleTest {
         }
     }
 
-    /* 
-    Both markets can be resolves to 0 or 1 or 2
-     */
     function test_marketWithStakesOnBothSides_setOutcome(uint8 outcome) public {
         outcome = outcome % 3;
         address _oracle = oracle;
@@ -613,6 +691,41 @@ contract OracleTest_StageEscalationLimitHitOracleResolves is OracleTest {
      */
     function test_gas_setOutcome() public {
         Oracle(oracle).setOutcome(0, marketWithStakesOnBothSides);
+    }
+
+    /* 
+    Invalid stage access
+     */
+    function testFail_buy() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSides;
+        buy(address(this), _oracle, _marketIdentifier, 10*10**18, 10*10**18);
+    }
+
+    function testFail_sell() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSides;
+        Oracle(_oracle).sell(10*10**18, address(this), _marketIdentifier);
+    }
+
+    function testFail_stakeOutcome() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSides;
+        // current stakes
+        (uint amount,,,) = getStaking(_oracle, _marketIdentifier);
+        stakeOutcome(_oracle, _marketIdentifier, 0, amount*2, address(this));
+    }
+
+    function testFail_redeemWinning() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSides;
+        Oracle(_oracle).redeemWinning(address(this), _marketIdentifier);
+    }
+
+    function testFail_redeemStake() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSides;
+        Oracle(_oracle).redeemStake(_marketIdentifier);
     }
 }
 
@@ -682,5 +795,34 @@ contract OracleTest_StageResolutionPeriodExpired is OracleTest {
             checkRedeemStake(address(this), _oracle, _marketIdentifier, 0);
             checkRedeemStake(actor1, _oracle, _marketIdentifier, sR0 + sR1);
         }
+    }
+
+    /* 
+    Invalid stage access
+     */
+    function testFail_buy() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSidesResolutionPeriodExpired;
+        buy(address(this), _oracle, _marketIdentifier, 10*10**18, 10*10**18);
+    }
+
+    function testFail_sell() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSidesResolutionPeriodExpired;
+        Oracle(_oracle).sell(10*10**18, address(this), _marketIdentifier);
+    }
+
+    function testFail_stakeOutcome() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSidesResolutionPeriodExpired;
+        // current stakes
+        (uint amount,,,) = getStaking(_oracle, _marketIdentifier);
+        stakeOutcome(_oracle, _marketIdentifier, 0, amount*2, address(this));
+    }
+
+    function testFail_setOutcome() public {
+        address _oracle = oracle;
+        bytes32 _marketIdentifier = marketWithStakesOnBothSidesResolutionPeriodExpired;
+        Oracle(_oracle).setOutcome(0, _marketIdentifier);
     }
 }
