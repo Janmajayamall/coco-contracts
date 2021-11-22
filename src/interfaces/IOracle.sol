@@ -78,7 +78,8 @@ interface IOracle {
     // function claimReserve() external;
 
     event MarketCreated(address indexed creator, bytes32 indexed eventIdentifier, bytes32 indexed marketIdentifier);
-    event OutcomeTraded(bytes32 indexed marketIdentifier, address indexed by);
+    event OutcomeBought(bytes32 indexed marketIdentifier, address indexed by, uint amount);
+    event OutcomeSold(bytes32 indexed marketIdentifier, address indexed by, uint amount);
     event OutcomeStaked(bytes32 indexed marketIdentifier, address indexed by);
     event OutcomeSet(bytes32 indexed marketIdentifier);
     event WinningRedeemed(bytes32 indexed marketIdentifier, address indexed by);

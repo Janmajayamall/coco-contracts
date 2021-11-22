@@ -174,7 +174,7 @@ contract Oracle is ERC1155, IOracle {
 
         outcomeReserves[marketIdentifier] = _reserves;
 
-        emit OutcomeTraded(marketIdentifier, to);
+        emit OutcomeBought(marketIdentifier, to, amount);
     } 
 
     function sell(uint amount, address to, bytes32 marketIdentifier) external {
@@ -209,7 +209,7 @@ contract Oracle is ERC1155, IOracle {
         
         outcomeReserves[marketIdentifier] = _reserves;
 
-        emit OutcomeTraded(marketIdentifier, to);
+        emit OutcomeSold(marketIdentifier, to, amount);
     }
 
     function stakeOutcome(uint _for, address to, bytes32 marketIdentifier) external {

@@ -189,14 +189,14 @@ contract ERC1155 is IERC1155 {
      */
     function _burn(address owner, uint256 id, uint256 value) internal {
         _balances[id][owner] -= value;
-        // emit TransferSingle(msg.sender, owner, address(0), id, value);
+        emit TransferSingle(msg.sender, owner, address(0), id, value);
     }
 
     function _transfer(address from, address to, uint id, uint value) internal {
         _balances[id][from] -= value;
         _balances[id][to] += value;
+        emit TransferSingle(msg.sender, from, to, id, value);
     }
-
 
     // function _doSafeTransferAcceptanceCheck(
     //     address operator,
