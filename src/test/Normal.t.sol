@@ -43,9 +43,6 @@ contract Normal is DSTest {
 	}
 
 	function test_creatMarket() public {
-		Oracle(oracle).collateralToken();
-		(,,,,,,bool isActive) = Oracle(oracle).marketConfig();
-		require(isActive);
 		Oracle(oracle).createAndFundMarket(address(this), keccak256('E'));
 	}
 

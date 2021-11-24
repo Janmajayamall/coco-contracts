@@ -143,7 +143,7 @@ contract Oracle is ERC1155, IOracle {
         // oracle is active
         require(_marketConfig.isActive, 'Oracle inactive');
 
-        emit MarketCreated(_creator, _eventIdentifier, marketIdentifier);
+        emit MarketCreated(marketIdentifier, _creator, _eventIdentifier, amount);
     }
 
     function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external {
@@ -173,8 +173,8 @@ contract Oracle is ERC1155, IOracle {
         _reserves.reserve1 = _reserve1New;
 
         outcomeReserves[marketIdentifier] = _reserves;
-
-        emit OutcomeBought(marketIdentifier, to, amount);
+        emit OutcomeBought(marketIdentifier, to, amount, amount0, amount1);
+        // emit OutcomeTraded(marketIdentifier, to);
     } 
 
     function sell(uint amount, address to, bytes32 marketIdentifier) external {
@@ -209,10 +209,10 @@ contract Oracle is ERC1155, IOracle {
         
         outcomeReserves[marketIdentifier] = _reserves;
 
-        emit OutcomeSold(marketIdentifier, to, amount);
+        emit OutcomeSold(marketIdentifier, to, amount, amount0, amount1);
     }
 
-    function stakeOutcome(uint _for, address to, bytes32 marketIdentifier) external {
+    function stakeOutcome(uint8 _for, address to, bytes32 marketIdentifier) external {
         StateDetails memory _stateDetails = stateDetails[marketIdentifier];
         if (_stateDetails.stage == uint8(Stages.MarketFunded) && block.number >= _stateDetails.expireAtBlock){
             _stateDetails.stage = uint8(Stages.MarketBuffer);
@@ -267,7 +267,7 @@ contract Oracle is ERC1155, IOracle {
         _stateDetails.donEscalationCount += 1;
         stateDetails[marketIdentifier] = _stateDetails;
 
-        emit OutcomeStaked(marketIdentifier, to);
+        emit OutcomeStaked(marketIdentifier, to, amount, _for);
     }
 
 

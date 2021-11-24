@@ -8,3 +8,4 @@ set -eo pipefail
 MarketRouter=$(spit_abi MarketRouter)
 OracleFactory=$(spit_abi OracleFactory)
 Oracle=$(spit_abi Oracle)
+MemeToken=$(spit_abi MemeToken)

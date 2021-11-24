@@ -105,7 +105,7 @@ contract MarketRouter {
     }
 
     /// @notice Stake amountIn for outcome _for 
-    function stakeForOutcome(uint _for, uint amountIn, address oracle, bytes32 marketIdentifier) external {
+    function stakeForOutcome(uint8 _for, uint amountIn, address oracle, bytes32 marketIdentifier) external {
         require(_for < 2);
         
         (uint lastAmountStaked,,,) = Oracle(oracle).staking(marketIdentifier);
