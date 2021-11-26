@@ -55,6 +55,7 @@ contract MarketRouter {
         require(fixedTokenIndex < 2);
 
         (uint reserve0, uint reserve1) = Oracle(oracle).outcomeReserves(marketIdentifier);
+        require(reserve0 > 0, "INVALID: MARKET");
 
         uint amountOutToken0 = amountOutToken0Min;
         uint amountOutToken1 = amountOutToken1Min;
@@ -63,7 +64,7 @@ contract MarketRouter {
         }else {
             amountOutToken0 = Math.getTokenAmountToBuyWithAmountC(amountOutToken1, fixedTokenIndex, reserve0, reserve1, amountInC);
         }
-        require(amountOutToken0 >= amountOutToken0Min && amountOutToken1 >= amountOutToken1Min);
+        require(amountOutToken0 >= amountOutToken0Min && amountOutToken1 >= amountOutToken1Min, "TRADE: INVALID");
 
         (address tokenC,,) = Oracle(oracle).marketDetails(marketIdentifier);
         TransferHelper.safeTransferFrom(tokenC, msg.sender, oracle, amountInC);
