@@ -124,4 +124,13 @@ contract MarketRouter {
         if (_for == 1) Oracle(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken, '');
         Oracle(oracle).redeemWinning(msg.sender, marketIdentifier);
     }
+
+    /// @notice Redeem winning for for both outcomes; helpful incases where outcome is undeicded
+    function redeemWinningBothOutcomes(uint amountInToken0, uint amountInToken1, address oracle, bytes32 marketIdentifier) external {
+        (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier);
+        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken0, '');
+        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken1, '');
+        Oracle(oracle).redeemWinning(msg.sender, marketIdentifier);
+    }
+    
 }

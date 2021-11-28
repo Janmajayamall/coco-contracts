@@ -38,7 +38,6 @@ contract ERC1155 is IERC1155 {
         @return The owner's balance of the token type requested
      */
     function balanceOf(address owner, uint256 id) public override view returns (uint256) {
-        require(owner != address(0), "ERC1155: balance query for the zero address");
         return _balances[id][owner];
     }
 
@@ -77,7 +76,7 @@ contract ERC1155 is IERC1155 {
      */
     function setApprovalForAll(address operator, bool approved) external override {
         _operatorApprovals[msg.sender][operator] = approved;
-        // emit ApprovalForAll(msg.sender, operator, approved);
+        emit ApprovalForAll(msg.sender, operator, approved);
     }
 
     /**

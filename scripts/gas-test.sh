@@ -9,23 +9,27 @@ set -eo pipefail
 # Oracle=0xc45c26f522f80fc78eef6fd70f8a076e0df8dd0c
 
 # testnet
-OracleFactory=0xB79c53EEda9ACE98A74E9b91c8AF775c1D1969c0
-MemeToken=0xb3482c99A3504D7cA134188F036eB2935F83af98
-MarketRouter=0x9831Da2b9A9E2868c82e92dDb18f11291A311286
+OracleFactory=0x358cB6064C333E9c71975022170Af99D6fD0b210
+MemeToken=0xbB7864F7372ABdDaf7Bca93AaaeC6c3b7d8C03d0
+MarketRouter=0x6D24eCcd06341Af32F46210EC829AbB8E71abE24
 DEPLOYER=0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6
 Oracle1=0xb9181365C266cD4e361a455567B77a16bd8044a8
 
 
-# # mint max meme tokens to user
-# estimate=$(seth estimate $MemeToken "mint(address,uint256)" $DEPLOYER $(seth --max-uint 256))
-# seth send $MemeToken "mint(address,uint256)" $DEPLOYER $(seth --max-uint 256) --gas $estimate
+# mint max meme tokens to user
+estimate=$(seth estimate $MemeToken "mint(address,uint256)" $DEPLOYER $(seth --max-uint 256))
+seth send $MemeToken "mint(address,uint256)" $DEPLOYER $(seth --max-uint 256) --gas $estimate
 
-# # give max allowance to market router for MemeToken
-# estimate=$(seth estimate $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256))
-# seth send $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256) --gas $estimate
+# give max allowance to market router for MemeToken
+estimate=$(seth estimate $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256))
+seth send $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256) --gas $estimate
+
+# # outcome token approval to market router
+# estimate=$(seth estimate 0xc99f3f1b51fb9e2d9e0ce9df5e238ee9fc15670e "setApprovalForAll(address,bool)" $MarketRouter true)
+# seth send 0xc99f3f1b51fb9e2d9e0ce9df5e238ee9fc15670e "setApprovalForAll(address,bool)" $MarketRouter true --gas $estimate
 
 # place bet
-estimate=$(seth estimate $MarketRouter "buyMinTokensForExactCTokens(uint256,uint256,uint256,uint256,address,bytes32)" 2333333333333333332 0 1000000000000000000 1 $Oracle1 0x68ab41f4840f519085df46ea033c513f5e9bf271a134088d7a1590934328b863)
+# estimate=$(seth estimate $MarketRouter "buyMinTokensForExactCTokens(uint256,uint256,uint256,uint256,address,bytes32)" 2333333333333333332 0 1000000000000000000 1 $Oracle1 0x68ab41f4840f519085df46ea033c513f5e9bf271a134088d7a1590934328b863)
 
 
 # # create a new oracle
