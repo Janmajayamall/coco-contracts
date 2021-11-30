@@ -16,13 +16,13 @@ DEPLOYER=0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6
 Oracle1=0xb9181365C266cD4e361a455567B77a16bd8044a8
 
 
-# mint max meme tokens to user
-estimate=$(seth estimate $MemeToken "mint(address,uint256)" $DEPLOYER $(seth --max-uint 256))
-seth send $MemeToken "mint(address,uint256)" $DEPLOYER $(seth --max-uint 256) --gas $estimate
+# # mint max meme tokens to user
+# estimate=$(seth estimate $MemeToken "mint(address,uint256)" $DEPLOYER $(seth --max-uint 256))
+# seth send $MemeToken "mint(address,uint256)" $DEPLOYER $(seth --max-uint 256) --gas $estimate
 
-# give max allowance to market router for MemeToken
-estimate=$(seth estimate $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256))
-seth send $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256) --gas $estimate
+# # give max allowance to market router for MemeToken
+# estimate=$(seth estimate $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256))
+# seth send $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256) --gas $estimate
 
 # # outcome token approval to market router
 # estimate=$(seth estimate 0xc99f3f1b51fb9e2d9e0ce9df5e238ee9fc15670e "setApprovalForAll(address,bool)" $MarketRouter true)
@@ -37,7 +37,7 @@ seth send $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 
 # seth send $OracleFactory "createOracle(address,address,address,bool,uint32,uint32,uint16,uint32,uint32,uint32)" $DEPLOYER $DEPLOYER $MemeToken true 1 10 5 500 100 100 --gas $estimate
 
 # # create a new market
-# estimate=$(seth estimate $MarketRouter "createFundBetOnMarket(bytes32,address,uint256,uint256,uint256)" $(seth --to-bytes32 $(seth --to-hex '310192120192')) $Oracle1 $(seth --to-wei 1 eth) $(seth --to-wei 1 eth) 1)
+estimate=$(seth estimate $MarketRouter "createFundBetOnMarket(bytes32,address,uint256,uint256,uint256)" $(seth --to-bytes32 $(seth --to-hex '31020192')) $Oracle1 $(seth --to-wei 1 eth) 0 1)
 # seth send $MarketRouter "createFundBetOnMarket(bytes32,address,uint256,uint256,uint256)" $(seth --to-bytes32 $(seth --to-hex '310192120192')) $Oracle1 $(seth --to-wei 1 eth) $(seth --to-wei 1 eth) 1 --gas $estimate
 
 

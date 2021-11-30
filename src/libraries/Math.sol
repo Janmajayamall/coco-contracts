@@ -134,7 +134,7 @@ library Math {
                 }
             }
             if eq(x,y) {tokenAmount := 0}
-            if not(eq(x,y)) {tokenAmount := safeSub(safeSub(x,y),1)}
+            if iszero(eq(x,y)) {tokenAmount := safeSub(safeSub(x,y),1)}
         }
         // require(fixedTokenIndex < 2);
         // uint x;
