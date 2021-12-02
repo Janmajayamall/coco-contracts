@@ -400,6 +400,23 @@ contract Oracle is ERC1155, IOracle {
         emit OutcomeSet(marketIdentifier);
     }
 
+    function claimReserves(bytes32 marketIdentifier) external {
+        address _creator = creators[marketIdentifier];
+        require(_creator == msg.sender);
+
+        Reserves memory _reserves = outcomeReserves[marketIdentifier];
+        (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
+
+        _transfer(address(this), _creator, token0Id, _reserves.reserve0);
+        _transfer(address(this), _creator, token1Id, _reserves.reserve1);
+
+        _reserves.reserve0 = 0;
+        _reserves.reserve1 = 0;
+        outcomeReserves[marketIdentifier] = _reserves;
+
+        emit ReservesClaimed(marketIdentifier);
+    }
+
     /* 
     Note on configs - 
     1. To resolve markets to favored outcome right after market expiry, set donBufferPeriod to 0

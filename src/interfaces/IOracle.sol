@@ -82,6 +82,7 @@ interface IOracle {
     event OutcomeSold(bytes32 indexed marketIdentifier, address by, uint amountC, uint amount0, uint amount1);
     event OutcomeStaked(bytes32 indexed marketIdentifier, address by, uint amount, uint8 outcome);
     event OutcomeSet(bytes32 indexed marketIdentifier);
+    event ReservesClaimed(bytes32 indexed marketIdentifier);
     event WinningRedeemed(bytes32 indexed marketIdentifier, address by);
     event StakedRedeemed(bytes32 indexed marketIdentifier, address by);
     event OracleConfigUpdated();

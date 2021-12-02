@@ -211,7 +211,7 @@ library Math {
             if or(lt(safeAdd(r0,a0), a),lt(safeAdd(r1,a1), a)) {
                 a := div(safeSub(nveB, rV),2)
             }
-            a := safeSub(a,1)
+            if iszero(eq(a, 0)) {a := safeSub(a,1)}
         }
         // uint nveB = r0 + a0 + r1 + a1;
         // uint c = (r0*a1) + (r1*a0) + (a0*a1);

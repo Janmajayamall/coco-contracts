@@ -364,7 +364,7 @@ contract OracleTest_StageBuffer is OracleTest {
         Oracle(oracle).sell(10*10**18, address(this), _marketIdentifier);
     }
 
-    function test_redeemWinning() public {
+    function testFail_redeemWinning() public {
         (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
         Oracle(_oracle).redeemWinning(address(this), _marketIdentifier);
     }
