@@ -6,7 +6,7 @@ import './interfaces/IOracle.sol';
 import './interfaces/IERC20.sol';
 import './ERC1155.sol';
 
-contract Oracle is ERC1155, IOracle {
+contract Oracle is IOracle, ERC1155 {
     /*
         marketIdentifier = keccack256(abi.encode(creator, eventIdentifier, address(this)))
     */

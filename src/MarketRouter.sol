@@ -135,7 +135,7 @@ contract MarketRouter {
         Oracle(oracle).redeemWinning(msg.sender, marketIdentifier);
     }
 
-    /// @notice Redeem msg.sender maximum trade winnings. This is porbably less costly than 
+    /// @notice Redeem msg.sender's maximum trade winnings. This is porbably less costly than 
     /// redeemWinning in OR L2s, since calldata arguments are reduced to 2 from 4. 
     function redeemMaxWinning(address oracle, bytes32 marketIdentifier) external {
         (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier);
@@ -146,7 +146,7 @@ contract MarketRouter {
         Oracle(oracle).redeemWinning(msg.sender, marketIdentifier);
     }
 
-    /// @notice Redeem tx.origin maximum trade & stake winnings
+    /// @notice Redeem tx.origin's maximum trade & stake winnings
     function redeemMaxWinningAndStake(address oracle, bytes32 marketIdentifier) external {
         // redeem max winnings
         (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier);
