@@ -116,7 +116,7 @@ contract MarketRouter {
 
         (address tokenC,,) = Oracle(oracle).marketDetails(marketIdentifier);
         TransferHelper.safeTransferFrom(tokenC, msg.sender, oracle, amountIn);
-        Oracle(oracle).stakeOutcome(_for, msg.sender, marketIdentifier);
+        Oracle(oracle).stakeOutcome(_for, marketIdentifier);
     }
 
     /// @notice Redeem winning for outcome
@@ -133,6 +133,31 @@ contract MarketRouter {
         Oracle(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken0, '');
         Oracle(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken1, '');
         Oracle(oracle).redeemWinning(msg.sender, marketIdentifier);
+    }
+
+    /// @notice Redeem msg.sender maximum trade winnings. This is porbably less costly than 
+    /// redeemWinning in OR L2s, since calldata arguments are reduced to 2 from 4. 
+    function redeemMaxWinning(address oracle, bytes32 marketIdentifier) external {
+        (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier);
+        uint bToken0 = Oracle(oracle).balanceOf(msg.sender, token0);
+        uint bToken1 = Oracle(oracle).balanceOf(msg.sender, token1);
+        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token0, bToken0, '');
+        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token1, bToken1, '');
+        Oracle(oracle).redeemWinning(msg.sender, marketIdentifier);
+    }
+
+    /// @notice Redeem tx.origin maximum trade & stake winnings
+    function redeemMaxWinningAndStake(address oracle, bytes32 marketIdentifier) external {
+        // redeem max winnings
+        (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier);
+        uint bToken0 = Oracle(oracle).balanceOf(tx.origin, token0);
+        uint bToken1 = Oracle(oracle).balanceOf(tx.origin, token1);
+        Oracle(oracle).safeTransferFrom(tx.origin, oracle, token0, bToken0, '');
+        Oracle(oracle).safeTransferFrom(tx.origin, oracle, token1, bToken1, '');
+        Oracle(oracle).redeemWinning(tx.origin, marketIdentifier);
+
+        // redeem stake
+        Oracle(oracle).redeemStake(marketIdentifier);
     }
     
 }

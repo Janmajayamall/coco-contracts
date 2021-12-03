@@ -270,6 +270,8 @@ contract OracleTest_StageBuffer is OracleTest {
     }
 
     function test_stakeOutcome() public {
+        emit log_named_address("origin", tx.origin);
+        emit log_named_address("address", address(this));
         address _oracle = oracle;
         bytes32 _marketIdentifier = marketIdentifier;
 
@@ -277,14 +279,14 @@ contract OracleTest_StageBuffer is OracleTest {
 
         stakeOutcome(_oracle, _marketIdentifier, 0, 2*10**18, address(this));
 
-        checkStake(address(this), _oracle, _marketIdentifier, 2*10**18, 0); // stake exists
+        checkStake(tx.origin, _oracle, _marketIdentifier, 2*10**18, 0); // stake exists
         checkTokenCReserves(_oracle, _marketIdentifier, rTokenC + 2*10**18); // tokenC reserves increased by stake
 
         // more valid staking
         stakeOutcome(_oracle, _marketIdentifier, 1, 4*10**18, actor1);
         stakeOutcome(_oracle, _marketIdentifier, 0, 8*10**18, address(this));
 
-        checkStake(address(this), _oracle, _marketIdentifier, 10*10**18, 0);
+        checkStake(tx.origin, _oracle, _marketIdentifier, 10*10**18, 0);
         checkStake(actor1, _oracle, _marketIdentifier, 0, 4*10**18);
 
         checkTokenCReserves(_oracle, _marketIdentifier, rTokenC + 14*10**18);
@@ -346,7 +348,7 @@ contract OracleTest_StageBuffer is OracleTest {
     function test_gas_stakeOutcome() public {
         address _oracle = oracle;
         IERC20(tokenC).transfer(_oracle, 10*10**18);
-        Oracle(oracle).stakeOutcome(0, address(this), marketIdentifier);
+        Oracle(oracle).stakeOutcome(0, marketIdentifier);
     }
 
     /* 

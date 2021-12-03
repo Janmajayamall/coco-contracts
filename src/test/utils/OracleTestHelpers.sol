@@ -68,7 +68,7 @@ contract OracleTestHelpers is DSTest, Hevm {
 	function stakeOutcome(address _oracle, bytes32 _marketIdentifier, uint _for, uint amount, address to) public {
 		address _tokenC = getTokenC(_oracle, _marketIdentifier);
 		IERC20(_tokenC).transfer(_oracle, amount);
-		Oracle(_oracle).stakeOutcome(uint8(_for), to, _marketIdentifier);
+		Oracle(_oracle).stakeOutcome(uint8(_for), _marketIdentifier);
 	}
 
 	function giveApprovalERC1155(address _of, address to, address _oracle) public {

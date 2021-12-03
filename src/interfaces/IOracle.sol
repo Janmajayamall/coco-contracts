@@ -66,7 +66,7 @@ interface IOracle {
     function createAndFundMarket(address _creator, bytes32 _eventIdentifier) external;
     function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external;
     function sell(uint amount, address to, bytes32 marketIdentifier) external;
-    function stakeOutcome(uint8 _for, address to, bytes32 marketIdentifier) external;
+    function stakeOutcome(uint8 _for, bytes32 marketIdentifier) external;
     function redeemWinning(address to, bytes32 marketIdentifier) external;
     function redeemStake(bytes32 marketIdentifier) external;
     function setOutcome(uint8 outcome, bytes32 marketIdentifier) external;
