@@ -59,30 +59,38 @@ interface IOracle {
         bool isActive;
     }
 
-    // function getMarketInfo() external view returns(string memory, address, address);
-    // function getTokenAddresses() external view returns (address,address,address);
-    // function getOutcomeReserves() external view returns (uint,uint);
-    // function getTokenCReserves() external view returns (uint,uint,uint);
-    // function getMarketDetails() external view returns (uint[12] memory);
-    // function getStaking() external view returns(uint,address,address,uint8);
-    // function getStake(uint _for, address _of) external view returns(uint);
+    function getOutcomeTokenIds(bytes32 marketIdentifier) external returns (uint,uint);
+    function getReserveTokenIds(bytes32 marketIdentifier) external returns (uint,uint);
+    function getMarketIdentifier(address _creator, bytes32 _eventIdentifier) external returns (bytes32 marketIdentifier);
 
+    function createAndFundMarket(address _creator, bytes32 _eventIdentifier) external;
+    function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external;
+    function sell(uint amount, address to, bytes32 marketIdentifier) external;
+    function stakeOutcome(uint8 _for, address to, bytes32 marketIdentifier) external;
+    function redeemWinning(address to, bytes32 marketIdentifier) external;
+    function redeemStake(bytes32 marketIdentifier) external;
+    function setOutcome(uint8 outcome, bytes32 marketIdentifier) external;
+    function claimOutcomeReserves(bytes32 marketIdentifier) external;
 
-    // function fund() external;
-    // function buy(uint amount0, uint amount1, address to) external;   
-    // function sell(uint amount, address to) external;
-    // function redeemWinning(uint _for, address to) external;
-    // function stakeOutcome(uint _for, address to) external;
-    // function redeemStake(uint _for) external;
-    // function setOutcome(uint8 _outcome) external;
-    // function claimReserve() external;
+    function updateMarketConfig(
+        bool _isActive, 
+        uint32 _feeNumerator, 
+        uint32 _feeDenominator,
+        uint16 _donEscalationLimit, 
+        uint32 _expireBufferBlocks, 
+        uint32 _donBufferBlocks, 
+        uint32 _resolutionBufferBlocks
+    ) external;
+    function updateCollateralToken(address token) external;
+    function updateDelegate(address _delegate) external;
+    function updateManager(address _manager) external;
 
     event MarketCreated(bytes32 indexed marketIdentifier, address creator, bytes32 eventIdentifier, uint fundingAmount);
     event OutcomeBought(bytes32 indexed marketIdentifier, address by, uint amountC, uint amount0, uint amount1);
     event OutcomeSold(bytes32 indexed marketIdentifier, address by, uint amountC, uint amount0, uint amount1);
     event OutcomeStaked(bytes32 indexed marketIdentifier, address by, uint amount, uint8 outcome);
     event OutcomeSet(bytes32 indexed marketIdentifier);
-    event ReservesClaimed(bytes32 indexed marketIdentifier);
+    event OutcomeReservesClaimed(bytes32 indexed marketIdentifier);
     event WinningRedeemed(bytes32 indexed marketIdentifier, address by);
     event StakedRedeemed(bytes32 indexed marketIdentifier, address by);
     event OracleConfigUpdated();

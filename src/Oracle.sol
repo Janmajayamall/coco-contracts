@@ -71,25 +71,25 @@ contract Oracle is ERC1155, IOracle {
         return (true, _stateDetails.outcome);
     }
 
-    function getOutcomeTokenIds(bytes32 marketIdentifier) public pure returns (uint,uint) {
+    function getOutcomeTokenIds(bytes32 marketIdentifier) public pure override returns (uint,uint) {
         return (
             uint256(keccak256(abi.encode(marketIdentifier, 0))),
             uint256(keccak256(abi.encode(marketIdentifier, 1)))
         );
     }
     
-    function getReserveTokenIds(bytes32 marketIdentifier) public pure returns (uint,uint){
+    function getReserveTokenIds(bytes32 marketIdentifier) public pure override returns (uint,uint){
         return (
             uint256(keccak256(abi.encode('R', marketIdentifier, 0))),
             uint256(keccak256(abi.encode('R', marketIdentifier, 1)))
         );
     }
 
-    function getMarketIdentifier(address _creator, bytes32 _eventIdentifier) public view returns (bytes32 marketIdentifier){
+    function getMarketIdentifier(address _creator, bytes32 _eventIdentifier) public view override returns (bytes32 marketIdentifier){
         marketIdentifier = keccak256(abi.encode(_creator, _eventIdentifier, address(this)));
     }
 
-    function createAndFundMarket(address _creator, bytes32 _eventIdentifier) external {
+    function createAndFundMarket(address _creator, bytes32 _eventIdentifier) external override {
         bytes32 marketIdentifier = getMarketIdentifier(_creator, _eventIdentifier);
 
         require(creators[marketIdentifier] == address(0), 'Market exists');
@@ -146,7 +146,7 @@ contract Oracle is ERC1155, IOracle {
         emit MarketCreated(marketIdentifier, _creator, _eventIdentifier, amount);
     }
 
-    function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external {
+    function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external override {
         require(isMarketFunded(marketIdentifier));
 
         // MarketDetails memory _marketDetails = marketDetails;
@@ -177,7 +177,7 @@ contract Oracle is ERC1155, IOracle {
         // emit OutcomeTraded(marketIdentifier, to);
     } 
 
-    function sell(uint amount, address to, bytes32 marketIdentifier) external {
+    function sell(uint amount, address to, bytes32 marketIdentifier) external override {
         require(isMarketFunded(marketIdentifier));
 
         // transfer optimistically
@@ -212,7 +212,7 @@ contract Oracle is ERC1155, IOracle {
         emit OutcomeSold(marketIdentifier, to, amount, amount0, amount1);
     }
 
-    function stakeOutcome(uint8 _for, address to, bytes32 marketIdentifier) external {
+    function stakeOutcome(uint8 _for, address to, bytes32 marketIdentifier) external override {
         StateDetails memory _stateDetails = stateDetails[marketIdentifier];
         if (_stateDetails.stage == uint8(Stages.MarketFunded) && block.number >= _stateDetails.expireAtBlock){
             _stateDetails.stage = uint8(Stages.MarketBuffer);
@@ -271,7 +271,7 @@ contract Oracle is ERC1155, IOracle {
     }
 
 
-    function redeemWinning(address to, bytes32 marketIdentifier) external {
+    function redeemWinning(address to, bytes32 marketIdentifier) external override {
         (bool valid, uint8 outcome) = isMarketClosed(marketIdentifier);
         require(valid);
 
@@ -305,7 +305,7 @@ contract Oracle is ERC1155, IOracle {
         emit WinningRedeemed(marketIdentifier, to);
     }
 
-    function redeemStake(bytes32 marketIdentifier) external {
+    function redeemStake(bytes32 marketIdentifier) external override {
         (bool valid, uint8 outcome) = isMarketClosed(marketIdentifier);
         require(valid);
 
@@ -356,7 +356,7 @@ contract Oracle is ERC1155, IOracle {
         emit StakedRedeemed(marketIdentifier, msg.sender);
     }
 
-    function setOutcome(uint8 outcome, bytes32 marketIdentifier) external {
+    function setOutcome(uint8 outcome, bytes32 marketIdentifier) external override {
         require(msg.sender == delegate);
         require(outcome < 3);
         
@@ -400,7 +400,10 @@ contract Oracle is ERC1155, IOracle {
         emit OutcomeSet(marketIdentifier);
     }
 
-    function claimReserves(bytes32 marketIdentifier) external {
+    function claimOutcomeReserves(bytes32 marketIdentifier) external override {
+        (bool valid, ) = isMarketClosed(marketIdentifier);
+        require(valid);
+
         address _creator = creators[marketIdentifier];
         require(_creator == msg.sender);
 
@@ -414,7 +417,7 @@ contract Oracle is ERC1155, IOracle {
         _reserves.reserve1 = 0;
         outcomeReserves[marketIdentifier] = _reserves;
 
-        emit ReservesClaimed(marketIdentifier);
+        emit OutcomeReservesClaimed(marketIdentifier);
     }
 
     /* 
@@ -431,7 +434,7 @@ contract Oracle is ERC1155, IOracle {
         uint32 _expireBufferBlocks, 
         uint32 _donBufferBlocks, 
         uint32 _resolutionBufferBlocks
-    ) external {
+    ) external override {
         // numerator < denominator
         require(_feeNumerator < _feeDenominator);
         // _expireBufferBlocks > 0 for active trading time
@@ -450,18 +453,18 @@ contract Oracle is ERC1155, IOracle {
         emit OracleConfigUpdated();
     }
 
-    function updateCollateralToken(address token) external {
+    function updateCollateralToken(address token) external override {
         collateralToken = token;
         emit OracleConfigUpdated();
     }
 
-    function updateDelegate(address _delegate) external {
+    function updateDelegate(address _delegate) external override {
         require(msg.sender == delegate);
         delegate = _delegate;
         emit DelegateChanged(_delegate);
     }
 
-    function updateManager(address _manager) external {
+    function updateManager(address _manager) external override {
         require(msg.sender == delegate);
         manager = _manager;
         emit OracleConfigUpdated();
