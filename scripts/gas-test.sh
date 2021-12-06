@@ -14,6 +14,7 @@ MemeToken=0xAad1ec64896a2e4f74EE74C18aE6f64b02891C8c
 MarketRouter=0x8E1c52251b71038AEcd1cd3182ec629285355AEc
 DEPLOYER=0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6
 Oracle1=0xb9181365C266cD4e361a455567B77a16bd8044a8
+TokenDistributor=0x8662c993cda3AcD720622Fd383778D7e14bEd663
 
 
 # # mint max meme tokens to user
@@ -31,10 +32,13 @@ Oracle1=0xb9181365C266cD4e361a455567B77a16bd8044a8
 # place bet
 # estimate=$(seth estimate $MarketRouter "buyMinTokensForExactCTokens(uint256,uint256,uint256,uint256,address,bytes32)" 2333333333333333332 0 1000000000000000000 1 $Oracle1 0x68ab41f4840f519085df46ea033c513f5e9bf271a134088d7a1590934328b863)
 
+# transfer tokens to token distributor
+estimate=$(seth estimate $MemeToken "transfer(address,uint256)" $TokenDistributor $(seth --to-wei 10000 eth))
+seth send $MemeToken "transfer(address,uint256)" $TokenDistributor $(seth --to-wei 10000 eth) --gas $estimate
 
-# create a new oracle
-estimate=$(seth estimate $OracleFactory "createOracle(address,address,address,bool,uint32,uint32,uint16,uint32,uint32,uint32)" $DEPLOYER $DEPLOYER $MemeToken true 1 10 5 24 24 24)
-seth send $OracleFactory "createOracle(address,address,address,bool,uint32,uint32,uint16,uint32,uint32,uint32)" $DEPLOYER $DEPLOYER $MemeToken true 1 10 5 24 24 24 --gas $estimate
+# # create a new oracle
+# estimate=$(seth estimate $OracleFactory "createOracle(address,address,address,bool,uint32,uint32,uint16,uint32,uint32,uint32)" $DEPLOYER $DEPLOYER $MemeToken true 1 10 5 24 24 24)
+# seth send $OracleFactory "createOracle(address,address,address,bool,uint32,uint32,uint16,uint32,uint32,uint32)" $DEPLOYER $DEPLOYER $MemeToken true 1 10 5 24 24 24 --gas $estimate
 
 # # create a new market
 # estimate=$(seth estimate $MarketRouter "createFundBetOnMarket(bytes32,address,uint256,uint256,uint256)" $(seth --to-bytes32 $(seth --to-hex '31020192')) $Oracle1 $(seth --to-wei 1 eth) 0 1)
