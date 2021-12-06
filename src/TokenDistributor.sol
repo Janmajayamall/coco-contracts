@@ -8,7 +8,7 @@ contract TokenDistributor {
     address public owner;
     IERC20 token;
     mapping(address=>uint256) public claims;
-    uint256 claimLimit = 10*10**18; // 1000 TOKENS
+    uint256 public claimLimit = 1000*10**18; // 1000 TOKENS
 
     constructor(IERC20 _token){
         token  = _token;
