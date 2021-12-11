@@ -35,4 +35,8 @@ contract TokenDistributor {
     function transferAll() external _isOwner { 
         token.transfer(owner, token.balanceOf(address(this)));
     }
+
+    function transferOwnership(address to) external _isOwner {
+        owner = to;
+    }
 }

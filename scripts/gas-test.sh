@@ -9,17 +9,17 @@ set -eo pipefail
 # Oracle=0xc45c26f522f80fc78eef6fd70f8a076e0df8dd0c
 
 # testnet
-OracleFactory=0xd3831c6B11aCC11852B150c0d163A665DE07D461
-MemeToken=0xAad1ec64896a2e4f74EE74C18aE6f64b02891C8c
-MarketRouter=0x8E1c52251b71038AEcd1cd3182ec629285355AEc
+OracleFactory=0x856D7C8d6eF7438690B99F05EDdcA67F35ca139E
+MemeToken=0xA59d95cF2220540ee63C8ab1AC6dFEDfd4A7D7Ac
+MarketRouter=0x42F7C9c294d9058a2264937C25a1B2a5538eEE92
 DEPLOYER=0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6
-Oracle1=0xb9181365C266cD4e361a455567B77a16bd8044a8
-TokenDistributor=0x3E4812c2cE12ce262DfDeB7309Cfe2585834D7A4
+# Oracle1=
+TokenDistributor=0x96BDc3F593F82fa355DE1174E140DCEf99Fe102D
 
 
-# # mint max meme tokens to user
-# estimate=$(seth estimate $MemeToken "mint(address,uint256)" $DEPLOYER $(seth --max-uint 256))
-# seth send $MemeToken "mint(address,uint256)" $DEPLOYER $(seth --max-uint 256) --gas $estimate
+# mint max meme tokens to token distributor
+estimate=$(seth estimate $MemeToken "mint(address,uint256)" $TokenDistributor $(seth --max-uint 256))
+seth send $MemeToken "mint(address,uint256)" $TokenDistributor $(seth --max-uint 256) --gas $estimate
 
 # # give max allowance to market router for MemeToken
 # estimate=$(seth estimate $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256))
@@ -31,10 +31,6 @@ TokenDistributor=0x3E4812c2cE12ce262DfDeB7309Cfe2585834D7A4
 
 # place bet
 # estimate=$(seth estimate $MarketRouter "buyMinTokensForExactCTokens(uint256,uint256,uint256,uint256,address,bytes32)" 2333333333333333332 0 1000000000000000000 1 $Oracle1 0x68ab41f4840f519085df46ea033c513f5e9bf271a134088d7a1590934328b863)
-
-# transfer tokens to token distributor
-estimate=$(seth estimate $MemeToken "transfer(address,uint256)" $TokenDistributor $(seth --to-wei 10000 eth))
-seth send $MemeToken "transfer(address,uint256)" $TokenDistributor $(seth --to-wei 10000 eth) --gas $estimate
 
 # # create a new oracle
 # estimate=$(seth estimate $OracleFactory "createOracle(address,address,address,bool,uint32,uint32,uint16,uint32,uint32,uint32)" $DEPLOYER $DEPLOYER $MemeToken true 1 10 5 24 24 24)
