@@ -1,15 +1,20 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC1155.sol";
+import "./interfaces/IERC1155TokenReceiver.sol";
+import "./interfaces/IERC165.sol";
+import "./libraries/Address.sol";
 
 /**
  * @title Standard ERC1155 token
  *
  * @dev Implementation of the basic standard multi-token.
  * See https://eips.ethereum.org/EIPS/eip-1155
- * Based on code by: https://github.com/enjin/erc-1155
+ * Based on code by: https://github.com/enjin/erc-1155 & https://github.com/gnosis/conditional-tokens-contracts/blob/master/contracts/ERC1155/ERC1155.sol
  */
-contract ERC1155 is IERC1155 {
+contract ERC1155 is IERC1155, IERC165 {
+
+    using Address for address;
 
     // Mapping from token ID to owner balances
     mapping (uint256 => mapping(address => uint256)) private _balances;
@@ -17,19 +22,21 @@ contract ERC1155 is IERC1155 {
     // Mapping from owner to operator approvals
     mapping (address => mapping(address => bool)) private _operatorApprovals;
 
-    constructor()
-        public
-    {
-        // _registerInterface(
-        //     ERC1155(0).safeTransferFrom.selector ^
-        //     ERC1155(0).safeBatchTransferFrom.selector ^
-        //     ERC1155(0).balanceOf.selector ^
-        //     ERC1155(0).balanceOfBatch.selector ^
-        //     ERC1155(0).setApprovalForAll.selector ^
-        //     ERC1155(0).isApprovedForAll.selector
-        // );
+
+    ////////////////////////// ERC165 //////////////////////////
+    bytes4 constant private INTERFACE_SIGNATURE_ERC165 = 0x01ffc9a7;
+    bytes4 constant private INTERFACE_SIGNATURE_ERC1155 = 0xd9b67a26;
+
+    function supportsInterface(bytes4 _interfaceId) public pure override returns (bool) {
+        if (_interfaceId == INTERFACE_SIGNATURE_ERC165 || _interfaceId == INTERFACE_SIGNATURE_ERC1155){
+            return true;
+        }
+        return false;
     }
 
+
+    ////////////////////////// ERC1155 //////////////////////////
+ 
     /*
         @dev Get the specified address' balance for token with specified ID.
         @param owner The address of the token holder
@@ -120,7 +127,7 @@ contract ERC1155 is IERC1155 {
 
         emit TransferSingle(msg.sender, from, to, id, value);
 
-        // _doSafeTransferAcceptanceCheck(msg.sender, from, to, id, value, data);
+        _doSafeTransferAcceptanceCheck(msg.sender, from, to, id, value, data);
     }
 
     /**
@@ -161,7 +168,7 @@ contract ERC1155 is IERC1155 {
 
         emit TransferBatch(msg.sender, from, to, ids, values);
 
-        // _doSafeBatchTransferAcceptanceCheck(msg.sender, from, to, ids, values, data);
+        _doSafeBatchTransferAcceptanceCheck(msg.sender, from, to, ids, values, data);
     }
 
     /**
@@ -177,7 +184,7 @@ contract ERC1155 is IERC1155 {
         _balances[id][to] += value;
         emit TransferSingle(msg.sender, address(0), to, id, value);
 
-        // _doSafeTransferAcceptanceCheck(msg.sender, address(0), to, id, value, data);
+        _doSafeTransferAcceptanceCheck(msg.sender, address(0), to, id, value, data);
     }
 
     /**
@@ -197,40 +204,41 @@ contract ERC1155 is IERC1155 {
         emit TransferSingle(msg.sender, from, to, id, value);
     }
 
-    // function _doSafeTransferAcceptanceCheck(
-    //     address operator,
-    //     address from,
-    //     address to,
-    //     uint256 id,
-    //     uint256 value,
-    //     bytes memory data
-    // )
-    //     internal
-    // {
-    //     if(to.isContract()) {
-    //         require(
-    //             IERC1155TokenReceiver(to).onERC1155Received(operator, from, id, value, data) ==
-    //                 IERC1155TokenReceiver(to).onERC1155Received.selector,
-    //             "ERC1155: got unknown value from onERC1155Received"
-    //         );
-    //     }
-    // }
+    function _doSafeTransferAcceptanceCheck(
+        address operator,
+        address from,
+        address to,
+        uint256 id,
+        uint256 value,
+        bytes memory data
+    )
+        internal
+    {
+        if(to.isContract()) {
+            require(
+                IERC1155TokenReceiver(to).onERC1155Received(operator, from, id, value, data) ==
+                    IERC1155TokenReceiver(to).onERC1155Received.selector,
+                "ERC1155: got unknown value from onERC1155Received"
+            );
+        }
+    }
 
-    // function _doSafeBatchTransferAcceptanceCheck(
-    //     address operator,
-    //     address from,
-    //     address to,
-    //     uint256[] memory ids,
-    //     uint256[] memory values,
-    //     bytes memory data
-    // )
-    //     internal
-    // {
-    //     if(to.isContract()) {
-    //         require(
-    //             IERC1155TokenReceiver(to).onERC1155BatchReceived(operator, from, ids, values, data) == IERC1155TokenReceiver(to).onERC1155BatchReceived.selector,
-    //             "ERC1155: got unknown value from onERC1155BatchReceived"
-    //         );
-    //     }
-    // }
+    function _doSafeBatchTransferAcceptanceCheck(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory values,
+        bytes memory data
+    )
+        internal
+    {
+        if(to.isContract()) {
+            require(
+                IERC1155TokenReceiver(to).onERC1155BatchReceived(operator, from, ids, values, data) == IERC1155TokenReceiver(to).onERC1155BatchReceived.selector,
+                "ERC1155: got unknown value from onERC1155BatchReceived"
+            );
+        }
+    }
+
 }

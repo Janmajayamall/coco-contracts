@@ -23,7 +23,7 @@ contract Oracle is IOracle, ERC1155 {
     mapping(address => uint) public cReserves;
 
     address public delegate;
-    address public manager;
+    address public manager; 
 
     constructor(address _delegate, address _manager){
         // setup oracle
@@ -174,7 +174,6 @@ contract Oracle is IOracle, ERC1155 {
 
         outcomeReserves[marketIdentifier] = _reserves;
         emit OutcomeBought(marketIdentifier, to, amount, amount0, amount1);
-        // emit OutcomeTraded(marketIdentifier, to);
     } 
 
     function sell(uint amount, address to, bytes32 marketIdentifier) external override {
