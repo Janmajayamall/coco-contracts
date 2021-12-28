@@ -134,13 +134,23 @@ contract OracleTest_StageFunded is OracleTest {
     }
 
     function testFail_buy_inSufficientAmount(uint120 a0, uint120 a1) public {
-        if (a0 == a1 ) return;
         address _oracle = oracle;
         bytes32 _marketIdentifier = marketIdentifier;
 
         // manipulate vals
         (uint r0, uint r1) = getOutcomeReserves(_oracle, _marketIdentifier);
         uint a = Math.getAmountCToBuyTokens(a0, a1, r0, r1);
+
+        // If a0 == a1, then a should also be equal to a0 & a1.
+        // This might not hold true for very small values, because +1 added
+        // at the end of Math library calculations to avoid
+        // failures caused by rounding. Thus, for the sake of this test, 
+        // a is made equal to a0 if a0 == a1 & a > a0. 
+        // Note that this will not affect test results validity, since a > a0 when 
+        // a0 == a1 only when a is single digit (which is nothing).
+        if (a0 == a1 && a0 < a){
+            a = a0;
+        }
 
         emit log_named_uint("amount", a);
         a -= 1; // supplying less amount than needed
@@ -279,14 +289,14 @@ contract OracleTest_StageBuffer is OracleTest {
 
         stakeOutcome(_oracle, _marketIdentifier, 0, 2*10**18, address(this));
 
-        checkStake(tx.origin, _oracle, _marketIdentifier, 2*10**18, 0); // stake exists
+        checkStake(address(this), _oracle, _marketIdentifier, 2*10**18, 0); // stake exists
         checkTokenCReserves(_oracle, _marketIdentifier, rTokenC + 2*10**18); // tokenC reserves increased by stake
 
         // more valid staking
         stakeOutcome(_oracle, _marketIdentifier, 1, 4*10**18, actor1);
         stakeOutcome(_oracle, _marketIdentifier, 0, 8*10**18, address(this));
 
-        checkStake(tx.origin, _oracle, _marketIdentifier, 10*10**18, 0);
+        checkStake(address(this), _oracle, _marketIdentifier, 10*10**18, 0);
         checkStake(actor1, _oracle, _marketIdentifier, 0, 4*10**18);
 
         checkTokenCReserves(_oracle, _marketIdentifier, rTokenC + 14*10**18);
