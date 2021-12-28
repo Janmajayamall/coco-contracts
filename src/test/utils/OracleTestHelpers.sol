@@ -68,7 +68,7 @@ contract OracleTestHelpers is DSTest, Hevm {
 	function stakeOutcome(address _oracle, bytes32 _marketIdentifier, uint _for, uint amount, address to) public {
 		address _tokenC = getTokenC(_oracle, _marketIdentifier);
 		IERC20(_tokenC).transfer(_oracle, amount);
-		Oracle(_oracle).stakeOutcome(uint8(_for), _marketIdentifier);
+		Oracle(_oracle).stakeOutcome(uint8(_for), _marketIdentifier, to);
 	}
 
 	function giveApprovalERC1155(address _of, address to, address _oracle) public {
@@ -250,16 +250,7 @@ contract OracleTestHelpers is DSTest, Hevm {
 	function checkRedeemStake(address _of, address _oracle, bytes32 _marketIdentifier, uint eW) public {
 		uint tokenCBalanceBefore = getTokenCBalance(_of, _oracle, _marketIdentifier);
 
-		/* 
-		redeemStake is only function in Oracle where msg.sender matters
-		 */
-		if (_of == address(this)){
-			Oracle(_oracle).redeemStake(_marketIdentifier);
-		}else{
-			bytes memory data = abi.encodeWithSignature("redeemStake(bytes32)", _marketIdentifier);
-			(bool success, ) = _of.call(abi.encodeWithSignature("send(address,bytes,bool)", _oracle, data, true));
-			require(success);
-		}
+		Oracle(_oracle).redeemStake(_marketIdentifier, _of);
 
 		uint tokenCBalanceAfter = getTokenCBalance(_of, _oracle, _marketIdentifier);
 		assertEq(tokenCBalanceAfter-tokenCBalanceBefore, eW);

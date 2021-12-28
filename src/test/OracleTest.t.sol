@@ -242,7 +242,7 @@ contract OracleTest_StageFunded is OracleTest {
     function testFail_redeemStake() public {
         (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
         buy(address(this), _oracle, _marketIdentifier, 10*10**18, 10*10**18);
-        Oracle(_oracle).redeemStake(_marketIdentifier);
+        Oracle(_oracle).redeemStake(_marketIdentifier, address(this));
     }
 
     function testFail_setOutcome() public {
@@ -348,7 +348,7 @@ contract OracleTest_StageBuffer is OracleTest {
     function test_gas_stakeOutcome() public {
         address _oracle = oracle;
         IERC20(tokenC).transfer(_oracle, 10*10**18);
-        Oracle(oracle).stakeOutcome(0, marketIdentifier);
+        Oracle(oracle).stakeOutcome(0, marketIdentifier, address(this));
     }
 
     /* 
@@ -373,7 +373,7 @@ contract OracleTest_StageBuffer is OracleTest {
 
     function testFail_redeemStake() public {
         (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
-        Oracle(_oracle).redeemStake(_marketIdentifier);
+        Oracle(_oracle).redeemStake(_marketIdentifier, address(this));
     }
 
     function testFail_setOutcome() public {
@@ -531,7 +531,7 @@ contract OracleTest_StageBufferPeriodExpired is OracleTest {
     function test_gas_redeemStake_marketWithStakesOnBothSides() public {
         address _oracle = oracle;
         bytes32 _marketIdentifier = marketWithStakesOnBothSides;
-        Oracle(_oracle).redeemStake(_marketIdentifier);
+        Oracle(_oracle).redeemStake(_marketIdentifier, address(this));
     }
 
     /* 
@@ -727,7 +727,7 @@ contract OracleTest_StageEscalationLimitHitOracleResolves is OracleTest {
     function testFail_redeemStake() public {
         address _oracle = oracle;
         bytes32 _marketIdentifier = marketWithStakesOnBothSides;
-        Oracle(_oracle).redeemStake(_marketIdentifier);
+        Oracle(_oracle).redeemStake(_marketIdentifier, address(this));
     }
 }
 
