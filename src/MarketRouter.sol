@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import './libraries/TransferHelper.sol';
 import './libraries/Math.sol';
-import './Oracle.sol';
 import "./interfaces/IOracle.sol";
 import "./interfaces/IERC1155.sol";
 
@@ -58,7 +57,7 @@ contract MarketRouter {
     function buyMinTokensForExactCTokens(uint amountOutToken0Min, uint amountOutToken1Min, uint amountInC, uint fixedTokenIndex, address oracle, bytes32 marketIdentifier) external {
         require(fixedTokenIndex < 2);
 
-        (uint reserve0, uint reserve1) = Oracle(oracle).outcomeReserves(marketIdentifier);
+        (uint reserve0, uint reserve1) = IOracle(oracle).outcomeReserves(marketIdentifier);
         require(reserve0 > 0, "INVALID: MARKET");
 
         uint amountOutToken0 = amountOutToken0Min;
@@ -70,21 +69,21 @@ contract MarketRouter {
         }
         require(amountOutToken0 >= amountOutToken0Min && amountOutToken1 >= amountOutToken1Min, "TRADE: INVALID");
 
-        (address tokenC,,) = Oracle(oracle).marketDetails(marketIdentifier);
+        (address tokenC,,) =IOracle(oracle).marketDetails(marketIdentifier);
         TransferHelper.safeTransferFrom(tokenC, msg.sender, oracle, amountInC);
-        Oracle(oracle).buy(amountOutToken0, amountOutToken1, msg.sender, marketIdentifier);
+        IOracle(oracle).buy(amountOutToken0, amountOutToken1, msg.sender, marketIdentifier);
     }
 
     /// @notice Sell exact amountInToken0 & amountInToken1 for collateral tokens >= amountOutTokenCMin
     function sellExactTokensForMinCTokens(uint amountInToken0, uint amountInToken1, uint amountOutTokenCMin, address oracle, bytes32 marketIdentifier) external {
-        (uint reserve0, uint reserve1) = Oracle(oracle).outcomeReserves(marketIdentifier);
+        (uint reserve0, uint reserve1) = IOracle(oracle).outcomeReserves(marketIdentifier);
         uint amountOutTokenC = Math.getAmountCBySellTokens(amountInToken0, amountInToken1, reserve0, reserve1);
         require(amountOutTokenC >= amountOutTokenCMin, "TRADE: INVALID");
 
-        (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier);
-        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken0, '');
-        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken1, '');
-        Oracle(oracle).sell(amountOutTokenC, msg.sender, marketIdentifier);
+        (uint token0, uint token1) = IOracle(oracle).getOutcomeTokenIds(marketIdentifier);
+        IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken0, '');
+        IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken1, '');
+        IOracle(oracle).sell(amountOutTokenC, msg.sender, marketIdentifier);
     }
 
     /// @notice Sell maximum of amountInToken0Max & amountInToken1Max for collateral tokens == amountOutTokenC
@@ -92,7 +91,7 @@ contract MarketRouter {
     function sellMaxTokensForExactCTokens(uint amountInToken0Max, uint amountInToken1Max, uint amountOutTokenC, uint fixedTokenIndex, address oracle, bytes32 marketIdentifier) external {
         require(fixedTokenIndex < 2);
 
-        (uint reserve0, uint reserve1) = Oracle(oracle).outcomeReserves(marketIdentifier);
+        (uint reserve0, uint reserve1) = IOracle(oracle).outcomeReserves(marketIdentifier);
 
         uint amountInToken0 = amountInToken0Max;
         uint amountInToken1 = amountInToken1Max;
@@ -103,63 +102,63 @@ contract MarketRouter {
         }
         require(amountInToken0 <= amountInToken0Max && amountInToken1 <= amountInToken1Max, "TRADE: INVALID");
 
-        (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier); 
-        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken0, '');
-        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken1, '');
-        Oracle(oracle).sell(amountOutTokenC, msg.sender, marketIdentifier);
+        (uint token0, uint token1) = IOracle(oracle).getOutcomeTokenIds(marketIdentifier); 
+        IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken0, '');
+        IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken1, '');
+        IOracle(oracle).sell(amountOutTokenC, msg.sender, marketIdentifier);
     }
 
     /// @notice Stake amountIn for outcome _for 
     function stakeForOutcome(uint8 _for, uint amountIn, address oracle, bytes32 marketIdentifier) external {
         require(_for < 2);
         
-        (uint lastAmountStaked,,,) = Oracle(oracle).staking(marketIdentifier);
+        (uint lastAmountStaked,,,) = IOracle(oracle).staking(marketIdentifier);
         require(lastAmountStaked*2 <= amountIn, "ERR: DOUBLE");
 
-        (address tokenC,,) = Oracle(oracle).marketDetails(marketIdentifier);
+        (address tokenC,,) = IOracle(oracle).marketDetails(marketIdentifier);
         TransferHelper.safeTransferFrom(tokenC, msg.sender, oracle, amountIn);
-        Oracle(oracle).stakeOutcome(_for, marketIdentifier, msg.sender);
+        IOracle(oracle).stakeOutcome(_for, marketIdentifier, msg.sender);
     }
 
     /// @notice Redeem winning for outcome
     function redeemWinning(uint _for, uint amountInToken, address oracle, bytes32 marketIdentifier) external {
-        (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier);
-        if (_for == 0) Oracle(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken, '');
-        if (_for == 1) Oracle(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken, '');
-        Oracle(oracle).redeemWinning(msg.sender, marketIdentifier);
+        (uint token0, uint token1) = IOracle(oracle).getOutcomeTokenIds(marketIdentifier);
+        if (_for == 0) IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken, '');
+        if (_for == 1) IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken, '');
+        IOracle(oracle).redeemWinning(msg.sender, marketIdentifier);
     }
 
     /// @notice Redeem winning for for both outcomes; helpful incases where outcome is undeicded
     function redeemWinningBothOutcomes(uint amountInToken0, uint amountInToken1, address oracle, bytes32 marketIdentifier) external {
-        (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier);
-        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken0, '');
-        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken1, '');
-        Oracle(oracle).redeemWinning(msg.sender, marketIdentifier);
+        (uint token0, uint token1) = IOracle(oracle).getOutcomeTokenIds(marketIdentifier);
+        IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken0, '');
+        IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken1, '');
+        IOracle(oracle).redeemWinning(msg.sender, marketIdentifier);
     }
 
-    /// @notice Redeem msg.sender's maximum trade winnings. This is porbably less costly than 
+    /// @notice Redeem msg.sender's maximum trade winnings. This is probably less costly than 
     /// redeemWinning in OR L2s, since calldata arguments are reduced to 2 from 4. 
     function redeemMaxWinning(address oracle, bytes32 marketIdentifier) external {
-        (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier);
-        uint bToken0 = Oracle(oracle).balanceOf(msg.sender, token0);
-        uint bToken1 = Oracle(oracle).balanceOf(msg.sender, token1);
-        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token0, bToken0, '');
-        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token1, bToken1, '');
-        Oracle(oracle).redeemWinning(msg.sender, marketIdentifier);
+        (uint token0, uint token1) = IOracle(oracle).getOutcomeTokenIds(marketIdentifier);
+        uint bToken0 = IERC1155(oracle).balanceOf(msg.sender, token0);
+        uint bToken1 = IERC1155(oracle).balanceOf(msg.sender, token1);
+        IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token0, bToken0, '');
+        IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token1, bToken1, '');
+        IOracle(oracle).redeemWinning(msg.sender, marketIdentifier);
     }
 
     /// @notice Redeem msg.sender's maximum trade & stake winnings
     function redeemMaxWinningAndStake(address oracle, bytes32 marketIdentifier) external {
         // redeem max winnings
-        (uint token0, uint token1) = Oracle(oracle).getOutcomeTokenIds(marketIdentifier);
-        uint bToken0 = Oracle(oracle).balanceOf(msg.sender, token0);
-        uint bToken1 = Oracle(oracle).balanceOf(msg.sender, token1);
-        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token0, bToken0, '');
-        Oracle(oracle).safeTransferFrom(msg.sender, oracle, token1, bToken1, '');
-        Oracle(oracle).redeemWinning(msg.sender, marketIdentifier);
+        (uint token0, uint token1) = IOracle(oracle).getOutcomeTokenIds(marketIdentifier);
+        uint bToken0 = IERC1155(oracle).balanceOf(msg.sender, token0);
+        uint bToken1 = IERC1155(oracle).balanceOf(msg.sender, token1);
+        IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token0, bToken0, '');
+        IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token1, bToken1, '');
+        IOracle(oracle).redeemWinning(msg.sender, marketIdentifier);
 
         // redeem stake
-        Oracle(oracle).redeemStake(marketIdentifier, msg.sender);
+        IOracle(oracle).redeemStake(marketIdentifier, msg.sender);
     }
     
 }

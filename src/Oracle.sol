@@ -3,22 +3,24 @@
 pragma solidity ^0.8.0;
 
 import './interfaces/IOracle.sol';
+import './interfaces/IOracleDataTypes.sol';
+import './interfaces/IOracleEvents.sol';
 import './interfaces/IERC20.sol';
 import './ERC1155.sol';
 
-contract Oracle is IOracle, ERC1155 {
+contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
     /*
         marketIdentifier = keccack256(abi.encode(creator, eventIdentifier, address(this)))
     */
-    mapping(bytes32 => StateDetails) public stateDetails;
-    mapping(bytes32 => Staking) public staking;
-    mapping(bytes32 => MarketDetails) public marketDetails;
-    mapping(bytes32 => Reserves) public outcomeReserves;
-    mapping(bytes32 => StakingReserves) public stakingReserves;
-    mapping(bytes32 => address) public creators;
+    mapping(bytes32 => StateDetails) public override stateDetails;
+    mapping(bytes32 => Staking) public override staking;
+    mapping(bytes32 => MarketDetails) public override marketDetails;
+    mapping(bytes32 => Reserves) public override outcomeReserves;
+    mapping(bytes32 => StakingReserves) public override stakingReserves;
+    mapping(bytes32 => address) public override creators;
     // mapping(bytes32 => bytes32) public eventIdentfiiers;
 
-    address public collateralToken;
+    address public override collateralToken;
     MarketConfig public marketConfig;
     mapping(address => uint) public cReserves;
 
