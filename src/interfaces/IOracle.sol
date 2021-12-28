@@ -62,14 +62,15 @@ interface IOracle {
     function getOutcomeTokenIds(bytes32 marketIdentifier) external pure returns (uint,uint);
     function getReserveTokenIds(bytes32 marketIdentifier) external pure returns (uint,uint);
     function getMarketIdentifier(address _creator, bytes32 _eventIdentifier) external view returns (bytes32 marketIdentifier);
+    function collateralToken() external view returns (address);
     // function balanceOf(address _owner, uint256 _id) external view returns (uint256);
 
     function createAndFundMarket(address _creator, bytes32 _eventIdentifier) external; 
     function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external;
     function sell(uint amount, address to, bytes32 marketIdentifier) external;
-    function stakeOutcome(uint8 _for, bytes32 marketIdentifier) external;
+    function stakeOutcome(uint8 _for, bytes32 marketIdentifier, address to) external;
     function redeemWinning(address to, bytes32 marketIdentifier) external;
-    function redeemStake(bytes32 marketIdentifier) external;
+    function redeemStake(bytes32 marketIdentifier, address to) external;
     function setOutcome(uint8 outcome, bytes32 marketIdentifier) external;
     function claimOutcomeReserves(bytes32 marketIdentifier) external;
 

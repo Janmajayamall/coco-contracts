@@ -212,7 +212,7 @@ contract Oracle is IOracle, ERC1155 {
     }
 
 
-    function stakeOutcome(uint8 _for, bytes32 marketIdentifier) external override {
+    function stakeOutcome(uint8 _for, bytes32 marketIdentifier, address to) external override {
 
         StateDetails memory _stateDetails = stateDetails[marketIdentifier];
         if (_stateDetails.stage == uint8(Stages.MarketFunded) && block.number >= _stateDetails.expireAtBlock){
@@ -238,15 +238,15 @@ contract Oracle is IOracle, ERC1155 {
 
         // update staking outcomeReserves
         if (_for == 0){
-            _mint(tx.origin, sToken0Id, amount, '');
+            _mint(to, sToken0Id, amount, '');
             _stakingReserves.reserveS0 += amount;
-            _staking.staker0 = tx.origin;
+            _staking.staker0 = to;
             _staking.lastOutcomeStaked = 0;
         }
         if (_for == 1){
-            _mint(tx.origin, sToken1Id, amount, '');
+            _mint(to, sToken1Id, amount, '');
             _stakingReserves.reserveS1 += amount;
-            _staking.staker1 = tx.origin;
+            _staking.staker1 = to;
             _staking.lastOutcomeStaked = 1;
         }
 
@@ -268,7 +268,7 @@ contract Oracle is IOracle, ERC1155 {
         _stateDetails.donEscalationCount += 1;
         stateDetails[marketIdentifier] = _stateDetails;
 
-        emit OutcomeStaked(marketIdentifier, tx.origin, amount, _for);
+        emit OutcomeStaked(marketIdentifier, to, amount, _for);
     }
 
 
@@ -306,17 +306,17 @@ contract Oracle is IOracle, ERC1155 {
         emit WinningRedeemed(marketIdentifier, to);
     }
 
-    function redeemStake(bytes32 marketIdentifier) external override {
+    function redeemStake(bytes32 marketIdentifier, address to) external override {
         (bool valid, uint8 outcome) = isMarketClosed(marketIdentifier);
         require(valid);
 
         (uint sToken0Id, uint sToken1Id) = getReserveTokenIds(marketIdentifier);
-        uint sAmount0 = balanceOf(tx.origin, sToken0Id);
-        uint sAmount1 = balanceOf(tx.origin, sToken1Id);
+        uint sAmount0 = balanceOf(to, sToken0Id);
+        uint sAmount1 = balanceOf(to, sToken1Id);
 
         // burn stake tokens
-        _burn(tx.origin, sToken0Id, sAmount0);
-        _burn(tx.origin, sToken1Id, sAmount1);
+        _burn(to, sToken0Id, sAmount0);
+        _burn(to, sToken1Id, sAmount1);
         
         StakingReserves memory _stakingReserves = stakingReserves[marketIdentifier];
         uint winAmount;
@@ -330,7 +330,7 @@ contract Oracle is IOracle, ERC1155 {
             if (outcome == 0){
                 _stakingReserves.reserveS0 -= sAmount0;
                 winAmount = sAmount0;
-                if (_staking.staker0 == tx.origin || _staking.staker0 == address(0)){
+                if (_staking.staker0 == to || _staking.staker0 == address(0)){
                     winAmount += _stakingReserves.reserveS1;
                     _stakingReserves.reserveS1 = 0;
                     _staking.staker0 = address(this);
@@ -338,7 +338,7 @@ contract Oracle is IOracle, ERC1155 {
             }else if (outcome == 1) {
                 _stakingReserves.reserveS1 -= sAmount1;
                 winAmount = sAmount1;
-                if (_staking.staker1 == tx.origin || _staking.staker1 == address(0)){
+                if (_staking.staker1 == to || _staking.staker1 == address(0)){
                     winAmount += _stakingReserves.reserveS0;
                     _stakingReserves.reserveS0 = 0;
                     _staking.staker1 = address(this);
@@ -351,10 +351,10 @@ contract Oracle is IOracle, ERC1155 {
 
         // transfer win amount
         address tokenC = marketDetails[marketIdentifier].tokenC;
-        IERC20(tokenC).transfer(tx.origin, winAmount);
+        IERC20(tokenC).transfer(to, winAmount);
         cReserves[tokenC] -= winAmount;
 
-        emit StakedRedeemed(marketIdentifier, tx.origin);
+        emit StakedRedeemed(marketIdentifier, to);
     }
 
     function setOutcome(uint8 outcome, bytes32 marketIdentifier) external override {

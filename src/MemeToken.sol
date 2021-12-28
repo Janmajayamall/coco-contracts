@@ -12,8 +12,8 @@ contract MemeToken is IERC20 {
 
     uint256 private _totalSupply;
 
-    string constant private _name = "MemeToken";
-    string constant private _symbol = "MEME";
+    string constant private _name = "Test-J";
+    string constant private _symbol = "TEST_J";
 
     address public immutable owner;
 
