@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-
 interface IOracle {
     function getOutcomeTokenIds(bytes32 marketIdentifier) external pure returns (uint,uint);
     function getReserveTokenIds(bytes32 marketIdentifier) external pure returns (uint,uint);
