@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "ds-test/test.sol";
 import "./../../Oracle.sol";
 import "./../../libraries/Math.sol";
-import "./../../MemeToken.sol";
+import "./../../helpers/TestToken.sol";
 import "./Hevm.sol";
 import "./../../interfaces/IERC20.sol";
 
@@ -163,8 +163,8 @@ contract OracleTestHelpers is DSTest, Hevm {
 	}
 
     function deloyAndPrepTokenC(address to) public returns (address _tokenC) {
-        _tokenC = address(new MemeToken());
-        MemeToken(_tokenC).mint(to, type(uint).max);
+        _tokenC = address(new TestToken());
+        TestToken(_tokenC).mint(to, type(uint).max);
     }
 
 	function checkReserves(address _oracle, bytes32 _marketIdentifier, uint er0, uint er1) public {

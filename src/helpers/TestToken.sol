@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-import './interfaces/IERC20.sol';
+import './../interfaces/IERC20.sol';
 
 pragma solidity ^0.8.0;
 
-contract MemeToken is IERC20 {
+contract TestToken is IERC20 {
 
     mapping(address => uint256) private _balances;
 
