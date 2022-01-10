@@ -18,7 +18,6 @@ contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
     mapping(bytes32 => Reserves) public override outcomeReserves;
     mapping(bytes32 => StakingReserves) public override stakingReserves;
     mapping(bytes32 => address) public override creators;
-    // mapping(bytes32 => bytes32) public eventIdentfiiers;
 
     address public override collateralToken;
     MarketConfig public marketConfig;
@@ -151,7 +150,6 @@ contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
     function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external override {
         require(isMarketFunded(marketIdentifier));
 
-        // MarketDetails memory _marketDetails = marketDetails;
         Reserves memory _reserves = outcomeReserves[marketIdentifier];
         (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
 
@@ -186,7 +184,6 @@ contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
         IERC20(tokenC).transfer(to, amount);
         cReserves[tokenC] -= amount;
 
-        // MarketDetails memory _marketDetails = marketDetails;
         Reserves memory _reserves = outcomeReserves[marketIdentifier];
         (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
 
@@ -207,7 +204,6 @@ contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
 
         _reserves.reserve0 = _reserve0New;
         _reserves.reserve1 = _reserve1New;
-        
         outcomeReserves[marketIdentifier] = _reserves;
 
         emit OutcomeSold(marketIdentifier, to, amount, amount0, amount1);
@@ -224,7 +220,6 @@ contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
             _stateDetails.stage == uint8(Stages.MarketBuffer) 
             && _stateDetails.donEscalationCount < _stateDetails.donEscalationLimit
             && block.number < _stateDetails.donBufferEndsAtBlock
-            
         );
 
         require(_for < 2);
