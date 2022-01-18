@@ -34,7 +34,7 @@ contract OracleTest is OracleTestHelpers {
     }
 
     function deployOracle() public {
-        oracle = address(new Oracle(address(this), address(this)));
+        oracle = address(new Oracle());
         Oracle(oracle).updateCollateralToken(tokenC);
         Oracle(oracle).updateMarketConfig(
             oracleConfig.isActive, 

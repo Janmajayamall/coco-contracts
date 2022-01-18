@@ -39,6 +39,10 @@ contract OracleTestHelpers is DSTest, Hevm {
         uint8 stage;
 	}
 
+	function deploySingleton() public returns (Oracle _singleton){
+		_singleton = new Oracle();
+	}
+
 	function createAndFundMarket(address _oracle, address _creator, bytes32 _eventIdentifier, uint fundAmount) public {
 		address _tokenC = Oracle(_oracle).collateralToken();
 		IERC20(_tokenC).transfer(_oracle, fundAmount);

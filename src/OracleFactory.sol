@@ -18,7 +18,7 @@ contract OracleFactory is IOracleFactory {
         uint32 _donBufferBlocks, 
         uint32 _resolutionBufferBlocks
     ) external override {
-        address oracle = address(new Oracle(delegate, manager));
+        address oracle = address(new Oracle());
 
         Oracle(oracle).updateCollateralToken(_tokenC);
         Oracle(oracle).updateMarketConfig(

@@ -24,7 +24,7 @@ contract Oracle is Singleton, ERC1155, IOracle, IOracleDataTypes, IOracleEvents 
     MarketConfig public marketConfig;
     mapping(address => uint) public cReserves;
 
-    address public manager; 
+    address public override manager; 
 
     constructor() {
         // Oracle is intended to be used as an singleton.
@@ -426,6 +426,8 @@ contract Oracle is Singleton, ERC1155, IOracle, IOracleDataTypes, IOracleEvents 
     1. To resolve markets to favored outcome right after market expiry, set donBufferPeriod to 0
     2. To pass on outcome decision to oracle right after market expiry, set escalation limit to 0 & donBufferBlocks > 0
     3. To resolve to last staked outcome right after hitting escalation limit, set resolutionBufferBlocks to 0
+
+    bytes4(keccak256("updateMarketConfig(bool,uint32,uint32,uint16,uint32,uint32,uint32)")) = 0x94eb6f2f
      */
     function updateMarketConfig(
         bool _isActive, 
@@ -437,7 +439,7 @@ contract Oracle is Singleton, ERC1155, IOracle, IOracleDataTypes, IOracleEvents 
         uint32 _resolutionBufferBlocks
     ) external override {
         require(msg.sender == manager);
-
+        
         // numerator < denominator
         require(_feeNumerator < _feeDenominator);
         // _expireBufferBlocks > 0 for active trading time
@@ -468,4 +470,4 @@ contract Oracle is Singleton, ERC1155, IOracle, IOracleDataTypes, IOracleEvents 
         manager = to;
         emit OracleConfigUpdated();
     }
-}
+}e

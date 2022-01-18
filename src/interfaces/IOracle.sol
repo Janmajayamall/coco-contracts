@@ -23,6 +23,7 @@ interface IOracle {
     function staking(bytes32 marketIdentifier) external view returns (uint256, address, address, uint8);
     function stakingReserves(bytes32 marketIdentifier) external view returns (uint256, uint256);
     function creators(bytes32 marketIdentifier) external view returns (address);
+    function manager() external view returns (address);
     // function balanceOf(address _owner, uint256 _id) external view returns (uint256);
 
     function createAndFundMarket(address _creator, bytes32 _eventIdentifier) external; 
