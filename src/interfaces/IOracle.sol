@@ -43,6 +43,5 @@ interface IOracle {
         uint32 _resolutionBufferBlocks
     ) external;
     function updateCollateralToken(address token) external;
-    function updateDelegate(address _delegate) external;
     function updateManager(address _manager) external;
 }

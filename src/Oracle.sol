@@ -7,8 +7,9 @@ import './interfaces/IOracleDataTypes.sol';
 import './interfaces/IOracleEvents.sol';
 import './interfaces/IERC20.sol';
 import './ERC1155.sol';
+import './Singleton.sol';
 
-contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
+contract Oracle is Singleton, ERC1155, IOracle, IOracleDataTypes, IOracleEvents {
     /*
         marketIdentifier = keccack256(abi.encode(creator, eventIdentifier, address(this)))
     */
@@ -23,14 +24,15 @@ contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
     MarketConfig public marketConfig;
     mapping(address => uint) public cReserves;
 
-    address public delegate;
     address public manager; 
 
-    constructor(address _delegate, address _manager){
-        // setup oracle
-        delegate = _delegate;
-        manager = _manager;
+    constructor() {
+        // Oracle is intended to be used as an singleton.
+        // Thus setting manager as address(1) makes
+        // this contract without proxy unusable.
+        manager = address(1);
     }
+
 
     function isMarketFunded(bytes32 marketIdentifier) internal view returns (bool) {
         StateDetails memory _details = stateDetails[marketIdentifier];
@@ -91,12 +93,13 @@ contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
     }
 
     function createAndFundMarket(address _creator, bytes32 _eventIdentifier) external override {
-        bytes32 marketIdentifier = getMarketIdentifier(_creator, _eventIdentifier);
+        address _manager = manager;
+        require(_manager != address(1) && _manager != address(0));
 
+        bytes32 marketIdentifier = getMarketIdentifier(_creator, _eventIdentifier);
         require(creators[marketIdentifier] == address(0), 'Market exists');
 
         address tokenC = collateralToken;
-
         uint amount = IERC20(tokenC).balanceOf(address(this)) - cReserves[tokenC] ; // fundingAmount > 0
         cReserves[tokenC] += amount;
 
@@ -355,7 +358,7 @@ contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
     }
 
     function setOutcome(uint8 outcome, bytes32 marketIdentifier) external override {
-        require(msg.sender == delegate);
+        require(msg.sender == manager);
         require(outcome < 3);
         
         StateDetails memory _stateDetails = stateDetails[marketIdentifier];
@@ -433,6 +436,8 @@ contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
         uint32 _donBufferBlocks, 
         uint32 _resolutionBufferBlocks
     ) external override {
+        require(msg.sender == manager);
+
         // numerator < denominator
         require(_feeNumerator < _feeDenominator);
         // _expireBufferBlocks > 0 for active trading time
@@ -452,19 +457,15 @@ contract Oracle is IOracle, IOracleDataTypes, IOracleEvents, ERC1155 {
     }
 
     function updateCollateralToken(address token) external override {
+        require(msg.sender == manager);
         collateralToken = token;
         emit OracleConfigUpdated();
     }
 
-    function updateDelegate(address _delegate) external override {
-        require(msg.sender == delegate);
-        delegate = _delegate;
-        emit DelegateChanged(_delegate);
-    }
-
-    function updateManager(address _manager) external override {
-        require(msg.sender == delegate);
-        manager = _manager;
+    function updateManager(address to) external override {
+        address _manager = manager;
+        require(msg.sender == _manager || _manager == address(0));
+        manager = to;
         emit OracleConfigUpdated();
     }
 }
