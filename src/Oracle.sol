@@ -6,10 +6,10 @@ import './interfaces/IOracle.sol';
 import './interfaces/IOracleDataTypes.sol';
 import './interfaces/IOracleEvents.sol';
 import './interfaces/IERC20.sol';
-import './ERC1155.sol';
-import './Singleton.sol';
+import './Oracle_ERC1155.sol';
+import './Oracle_Singleton.sol';
 
-contract Oracle is Singleton, ERC1155, IOracle, IOracleDataTypes, IOracleEvents {
+contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, IOracleEvents {
     /*
         marketIdentifier = keccack256(abi.encode(creator, eventIdentifier, address(this)))
     */
@@ -438,7 +438,7 @@ contract Oracle is Singleton, ERC1155, IOracle, IOracleDataTypes, IOracleEvents 
         uint32 _donBufferBlocks, 
         uint32 _resolutionBufferBlocks
     ) external override {
-        require(msg.sender == manager);
+        // require(msg.sender == manager);
         
         // numerator < denominator
         require(_feeNumerator < _feeDenominator);
@@ -459,7 +459,7 @@ contract Oracle is Singleton, ERC1155, IOracle, IOracleDataTypes, IOracleEvents 
     }
 
     function updateCollateralToken(address token) external override {
-        require(msg.sender == manager);
+        // require(msg.sender == manager);
         collateralToken = token;
         emit OracleConfigUpdated();
     }
@@ -470,4 +470,4 @@ contract Oracle is Singleton, ERC1155, IOracle, IOracleDataTypes, IOracleEvents 
         manager = to;
         emit OracleConfigUpdated();
     }
-}e
+}

@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "./OracleProxy.sol";
-// import "./../../lib/safe-contracts/contracts/proxies/GnosisSafeProxy.sol";
+import "./../../lib/safe-contracts/contracts/proxies/GnosisSafeProxy.sol";
 
 contract OracleProxyFactory {
 
@@ -14,47 +14,55 @@ contract OracleProxyFactory {
         bytes calldata oracleMarketConfig,
         address[] calldata owners,
         uint256 safeThreshold
-    ) external returns (OracleProxy) {
+    ) external returns (OracleProxy _oracleProxy) {
         // deploy gnosis safe
-        // GnosisSafeProxy _safeProxy = new GnosisSafeProxy(_safeSingleton);
-        address _safeProxy = address(0);
-        
+        GnosisSafeProxy _safeProxy = new GnosisSafeProxy(safeSingleton);
+
         // setup safe
-        bytes memory safeSetupCall = abi.encodeWithSignature(
-                "setup(address[] calldata,uint256,address,bytes calldata,address,address,uint256,address payable)",
-                owners,
-                safeThreshold,
-                address(0),
-                0,
-                0,
-                0,
-                0,
-                0
-            );
+        // 0xb63e800d = GnosisSafe.setup.selector
+        bytes memory safeSetupCall = abi.encodeWithSelector(
+            0xb63e800d, 
+            owners,
+            safeThreshold,
+            address(0),
+            0,
+            0,
+            0,
+            0,
+            0
+        );
         assembly {
             if eq(call(gas(), _safeProxy, 0, add(safeSetupCall, 0x20), mload(safeSetupCall), 0, 0), 0) {
                 revert(0, 0)
             }
         }
 
-
-        OracleProxy _oracleProxy = new OracleProxy(_oracleSingleton);
+        // deploy oracle
+        _oracleProxy = new OracleProxy(oracleSingleton);
 
         // setup oracle
-        bytes memory updateManagerCall = abi.encodeWithSignature(
-                "updateManager(address)",
-                address(_safeProxy)
-            );
+        // update manager
+        // 0x58aba00f = Oracle.updateManager.selector
+        bytes memory updateManagerCall = abi.encodeWithSelector(0x58aba00f,  address(_safeProxy));
         assembly {
             if eq(call(gas(), _oracleProxy, 0, add(updateManagerCall, 0x20), mload(updateManagerCall), 0, 0), 0) {
                 revert(0, 0)
             }
         }
-        
+
+        // update market configs
         // 0x94eb6f2f = Oracle.updateMarketConfig.selector
-        bytes memory updateMarketConfigCall = bytes.concat(0x94eb6f2f, oracleMarketConfig);
+        bytes memory updateMarketConfigCall = bytes.concat(bytes4(0x94eb6f2f), oracleMarketConfig);
         assembly {
             if eq(call(gas(), _oracleProxy, 0, add(updateMarketConfigCall, 0x20), mload(updateMarketConfigCall), 0, 0), 0) {
+                revert(0, 0)
+            }
+        }
+
+        // update collateral token
+        bytes memory updateCollateralToken = abi.encodeWithSelector(0x29d06108, tokenC);
+        assembly {
+            if eq(call(gas(), _oracleProxy, 0, add(updateCollateralToken, 0x20), mload(updateCollateralToken), 0, 0), 0) {
                 revert(0, 0)
             }
         }
