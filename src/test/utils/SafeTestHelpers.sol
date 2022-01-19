@@ -2,7 +2,9 @@ import "./../../../lib/safe-contracts/contracts/GnosisSafe.sol";
 
 
 contract SafeTestHelpers {
-    function deploySingleton() public returns (GnosisSafe _singleton){
+    function deploySafeSingleton() public returns (GnosisSafe _singleton){
         _singleton = new GnosisSafe();
     }
+
+
 }

@@ -3,8 +3,9 @@ pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 import "./../Oracle.sol";
+import "./../proxies/OracleProxy.sol";
 import "./../interfaces/IOracle.sol";
-import "./utils/Hevm.sol";
+
 import "./../libraries/Math.sol";
 import "./utils/OracleTestHelpers.sol";
 import "./utils/Actor.sol";
@@ -13,6 +14,7 @@ contract OracleWithZeroResolutionPeriod is OracleTestHelpers {
  
     OracleConfig oracleConfig;
 
+    address oracleSingleton;
     address oracle;
 	address tokenC;
     uint fundAmount = 10*10**18;
@@ -31,7 +33,8 @@ contract OracleWithZeroResolutionPeriod is OracleTestHelpers {
     }
 
     function deployOracle() public {
-        oracle = address(new Oracle());
+        oracleSingleton = address(new Oracle());
+        oracle = address(new OracleProxy(oracleSingleton));
         Oracle(oracle).updateCollateralToken(tokenC);
         Oracle(oracle).updateMarketConfig(
             oracleConfig.isActive, 
@@ -42,6 +45,7 @@ contract OracleWithZeroResolutionPeriod is OracleTestHelpers {
             oracleConfig.donBufferBlocks, 
             oracleConfig.resolutionBufferBlocks
         );
+        Oracle(oracle).updateManager(address(this));
     }
 }
 
@@ -68,7 +72,7 @@ contract OracleWithZeroResolutionPeriod_escalationLimitHit is OracleWithZeroReso
         buy(address(this), oracle, marketIdentifier, 10*10**18, 0);
         buy(address(this), oracle, marketIdentifier, 0, 5*10**18);
         // expire market;
-        roll(getStateDetail(oracle, marketIdentifier, 0));
+        hevm.roll(getStateDetail(oracle, marketIdentifier, 0));
         for (uint i; i < oracleConfig.donEscalationLimit; i++){
             uint odd = i%2;
             stakeOutcome(oracle, marketIdentifier, odd, 2*10**18*(2**i), address(this));

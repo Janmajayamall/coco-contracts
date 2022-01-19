@@ -33,6 +33,11 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
         manager = address(1);
     }
 
+    function isAuthorised() internal view returns (bool) {
+        address _manager = manager;
+        return(msg.sender == _manager || _manager == address(0));
+    }
+
 
     function isMarketFunded(bytes32 marketIdentifier) internal view returns (bool) {
         StateDetails memory _details = stateDetails[marketIdentifier];
@@ -438,7 +443,7 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
         uint32 _donBufferBlocks, 
         uint32 _resolutionBufferBlocks
     ) external override {
-        // require(msg.sender == manager);
+        require(isAuthorised());
         
         // numerator < denominator
         require(_feeNumerator < _feeDenominator);
@@ -459,14 +464,16 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
     }
 
     function updateCollateralToken(address token) external override {
-        // require(msg.sender == manager);
+        require(isAuthorised());
         collateralToken = token;
         emit OracleConfigUpdated();
     }
 
     function updateManager(address to) external override {
-        address _manager = manager;
-        require(msg.sender == _manager || _manager == address(0));
+        require(isAuthorised());
+
+        require(to != address(0));
+
         manager = to;
         emit OracleConfigUpdated();
     }

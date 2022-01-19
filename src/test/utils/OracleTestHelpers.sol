@@ -5,10 +5,12 @@ import "ds-test/test.sol";
 import "./../../Oracle.sol";
 import "./../../libraries/Math.sol";
 import "./../../helpers/TestToken.sol";
-import "./Hevm.sol";
+import "./IHevm.sol";
 import "./../../interfaces/IERC20.sol";
 
-contract OracleTestHelpers is DSTest, Hevm {
+contract OracleTestHelpers is DSTest {
+
+	IHevm hevm = IHevm(HEVM_ADDRESS);
 
 	struct OracleConfig {
 		address tokenC;

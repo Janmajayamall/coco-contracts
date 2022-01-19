@@ -3,8 +3,9 @@ pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 import "./../Oracle.sol";
+import "./../proxies/OracleProxy.sol";
 import "./../interfaces/IOracle.sol";
-import "./utils/Hevm.sol";
+
 import "./../libraries/Math.sol";
 import "./utils/OracleTestHelpers.sol";
 import "./utils/Actor.sol";
@@ -19,6 +20,7 @@ contract OracleWithZeroBufferPeriod is OracleTestHelpers {
     
     OracleConfig oracleConfig;
 
+    address oracleSingleton;
     address oracle;
 	address tokenC;
     uint fundAmount = 10*10**18;
@@ -37,7 +39,8 @@ contract OracleWithZeroBufferPeriod is OracleTestHelpers {
     }
 
     function deployOracle() public {
-        oracle = address(new Oracle());
+        oracleSingleton = address(new Oracle());
+        oracle = address(new OracleProxy(oracleSingleton));
         Oracle(oracle).updateCollateralToken(tokenC);
         Oracle(oracle).updateMarketConfig(
             oracleConfig.isActive, 
@@ -48,6 +51,7 @@ contract OracleWithZeroBufferPeriod is OracleTestHelpers {
             oracleConfig.donBufferBlocks, 
             oracleConfig.resolutionBufferBlocks
         );
+        Oracle(oracle).updateManager(address(this));
     }
 }
 
@@ -76,7 +80,7 @@ contract OracleWithZeroBufferPeriod_StageBuffer is OracleWithZeroBufferPeriod {
         buy(address(this), oracle, marketIdentifier, 10*10**18, 0);
         buy(address(this), oracle, marketIdentifier, 0, 5*10**18);
         // expire market;
-        roll(getStateDetail(oracle, marketIdentifier, 0));
+        hevm.roll(getStateDetail(oracle, marketIdentifier, 0));
     }
 
     function testFail_stakeOutcome() public {

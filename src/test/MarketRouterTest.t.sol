@@ -5,10 +5,13 @@ import "ds-test/test.sol";
 import "./utils/OracleTestHelpers.sol";
 import "./../MarketRouter.sol";
 import "./../Oracle.sol";
+
+import "./../proxies/OracleProxy.sol";
 import "./../interfaces/IERC20.sol";
 import "./../libraries/Math.sol";
 
 contract MarketRouterTest is OracleTestHelpers {
+    address oracleSingleton;
     address oracle;
     address tokenC;
     address marketRouter;
@@ -18,7 +21,8 @@ contract MarketRouterTest is OracleTestHelpers {
     function setUp() public {
         tokenC = deloyAndPrepTokenC(address(this));
         
-        oracle = address(new Oracle());
+        oracleSingleton = address(new Oracle());
+        oracle = address(new OracleProxy(oracleSingleton));
         Oracle(oracle).updateCollateralToken(tokenC);
         Oracle(oracle).updateMarketConfig(
            true,
@@ -29,6 +33,7 @@ contract MarketRouterTest is OracleTestHelpers {
            100,
            100
         );
+        Oracle(oracle).updateManager(address(this));
 
         marketRouter = address(new MarketRouter());
 

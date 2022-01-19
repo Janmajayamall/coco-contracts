@@ -3,8 +3,10 @@ pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 import "./../Oracle.sol";
+
+import "./../proxies/OracleProxy.sol";
 import "./../interfaces/IOracle.sol";
-import "./utils/Hevm.sol";
+
 import "./../libraries/Math.sol";
 import "./utils/OracleTestHelpers.sol";
 import "./utils/Actor.sol";
@@ -19,6 +21,7 @@ contract OracleWithZeroEscalationLimmit is OracleTestHelpers {
     
     OracleConfig oracleConfig;
 
+    address oracleSingleton;
     address oracle;
 	address tokenC;
     uint fundAmount = 10*10**18;
@@ -37,7 +40,8 @@ contract OracleWithZeroEscalationLimmit is OracleTestHelpers {
     }
 
     function deployOracle() public {
-        oracle = address(new Oracle());
+        oracleSingleton = address(new Oracle());
+        oracle = address(new OracleProxy(oracleSingleton));
         Oracle(oracle).updateCollateralToken(tokenC);
         Oracle(oracle).updateMarketConfig(
             oracleConfig.isActive, 
@@ -48,6 +52,7 @@ contract OracleWithZeroEscalationLimmit is OracleTestHelpers {
             oracleConfig.donBufferBlocks, 
             oracleConfig.resolutionBufferBlocks
         );
+        Oracle(oracle).updateManager(address(this));
     }
 }
 
@@ -82,7 +87,7 @@ contract OracleWithZeroEscalationLimit_StageBuffer is OracleWithZeroEscalationLi
         buy(address(this), oracle, marketIdentifier, 10*10**18, 0);
         sell(address(this), oracle, marketIdentifier, 2*10**18, 0);
         // expire market;
-        roll(getStateDetail(oracle, marketIdentifier, 0));
+        hevm.roll(getStateDetail(oracle, marketIdentifier, 0));
     }
 
     function testFail_stakeOutcome() public {
@@ -110,7 +115,7 @@ contract OracleWithZeroEscalationLimit_StageOracleResolves is OracleWithZeroEsca
         buy(address(this), oracle, marketIdentifier, 10*10**18, 0);
         buy(address(this), oracle, marketIdentifier, 0, 10*10**18);
         // expire market;
-        roll(getStateDetail(oracle, marketIdentifier, 0));
+        hevm.roll(getStateDetail(oracle, marketIdentifier, 0));
     }
 
     function test_setOutcome (uint8 outcome) public {
@@ -147,9 +152,9 @@ contract OracleWithZeroEscalationLimit_StageResolutionPeriodExpired is OracleWit
         buy(address(this), oracle, marketIdentifier, 10*10**18, 0);
         buy(address(this), oracle, marketIdentifier, 0, 5*10**18);
         // expire market;
-        roll(getStateDetail(oracle, marketIdentifier, 0));
+        hevm.roll(getStateDetail(oracle, marketIdentifier, 0));
         // expire resolution period
-        roll(getStateDetail(oracle, marketIdentifier, 2));
+        hevm.roll(getStateDetail(oracle, marketIdentifier, 2));
     }
 
     function testFail_setOutcome (uint8 outcome) public {

@@ -4,10 +4,9 @@ pragma solidity ^0.8.0;
 import "ds-test/test.sol";
 import "./../Oracle.sol";
 import "./../interfaces/IOracle.sol";
-import "./utils/Hevm.sol";
 import "./../libraries/Math.sol";
 
-contract OracleCreationTest is DSTest, Hevm {
+contract OracleCreationTest is DSTest {
 	struct OracleConfig {
 		address tokenC;
 		uint32 feeNumerator;

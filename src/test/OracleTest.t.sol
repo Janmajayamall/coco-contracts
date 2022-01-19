@@ -3,9 +3,10 @@ pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 import "./../Oracle.sol";
+import "./../proxies/OracleProxy.sol";
 
 import "./../interfaces/IOracle.sol";
-import "./utils/Hevm.sol";
+
 import "./../libraries/Math.sol";
 import "./utils/OracleTestHelpers.sol";
 import "./utils/Actor.sol";
@@ -13,6 +14,7 @@ import "./utils/Actor.sol";
 contract OracleTest is OracleTestHelpers {
 
 	OracleConfig oracleConfig;
+    address oracleSingleton;
 	address oracle;
 	address tokenC;
     uint fundAmount = 10*10**18;
@@ -34,7 +36,8 @@ contract OracleTest is OracleTestHelpers {
     }
 
     function deployOracle() public {
-        oracle = address(new Oracle());
+        oracleSingleton = address(new Oracle());
+        oracle = address(new OracleProxy(oracleSingleton));
         Oracle(oracle).updateCollateralToken(tokenC);
         Oracle(oracle).updateMarketConfig(
             oracleConfig.isActive, 
@@ -45,6 +48,7 @@ contract OracleTest is OracleTestHelpers {
             oracleConfig.donBufferBlocks, 
             oracleConfig.resolutionBufferBlocks
         );
+        Oracle(oracle).updateManager(address(this));
     }
 
     function deployActors() public {
@@ -276,7 +280,7 @@ contract OracleTest_StageBuffer is OracleTest {
         marketIdentifier = getMarketIdentifier(oracle, address(this), eventIdentifier);
 
         // commences buffer period; rolls to block at which market expires
-        roll(getStateDetail(oracle, marketIdentifier, 0));
+        hevm.roll(getStateDetail(oracle, marketIdentifier, 0));
     }
 
     function test_stakeOutcome() public {
@@ -366,13 +370,13 @@ contract OracleTest_StageBuffer is OracleTest {
      */
     function testFail_buy() public {
         (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
-        roll(getStateDetail(_oracle, _marketIdentifier, 0)); // expires market
+        hevm.roll(getStateDetail(_oracle, _marketIdentifier, 0)); // expires market
         buy(address(this), _oracle, _marketIdentifier, 10*10**18, 10*10**18);
     }
 
     function testFail_sell() public {
         (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
-        roll(getStateDetail(_oracle, _marketIdentifier, 0)); // expires market
+        hevm.roll(getStateDetail(_oracle, _marketIdentifier, 0)); // expires market
         Oracle(oracle).sell(10*10**18, address(this), _marketIdentifier);
     }
 
@@ -426,7 +430,7 @@ contract OracleTest_StageBufferPeriodExpired is OracleTest {
         bytes32 _marketIdentifier = getMarketIdentifier(oracle, address(this), _eventIdentifier);
         marketWithNoStakesAndNoTrades = _marketIdentifier;
         createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
-        roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
+        hevm.roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
 
         /* 
         Prep marketWithNoStakesAndBiasedTrades
@@ -438,7 +442,7 @@ contract OracleTest_StageBufferPeriodExpired is OracleTest {
         // biased trade; tilt favor to 0
         buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
         buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
-        roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
+        hevm.roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
 
         /* 
         Prep marketWithNoStakesAndEqualTrades
@@ -450,7 +454,7 @@ contract OracleTest_StageBufferPeriodExpired is OracleTest {
         // equal trades
         buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
         buy(actor1, oracle, _marketIdentifier, 0, 10*10**18);
-        roll(getStateDetail(oracle, _marketIdentifier, 1));
+        hevm.roll(getStateDetail(oracle, _marketIdentifier, 1));
 
         /* 
         Prep marketWithStakesOnBothSides
@@ -461,11 +465,11 @@ contract OracleTest_StageBufferPeriodExpired is OracleTest {
         createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
         buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
         buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
-        roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
+        hevm.roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
         stakeOutcome(oracle, _marketIdentifier, 0, 2*10**18, address(this));
         stakeOutcome(oracle, _marketIdentifier, 1, 4*10**18, actor1); 
         stakeOutcome(oracle, _marketIdentifier, 0, 8*10**18, address(this)); // winning stake
-        roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
+        hevm.roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
 
         /* 
         Prep marketWithStakesOnSingleSide
@@ -476,10 +480,10 @@ contract OracleTest_StageBufferPeriodExpired is OracleTest {
         createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
         buy(address(this), oracle, _marketIdentifier, 0, 10*10**18);
         buy(actor1, oracle, _marketIdentifier, 5*10**18, 0);
-        roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
+        hevm.roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
         stakeOutcome(oracle, _marketIdentifier, 1, 2*10**18, actor1);
         stakeOutcome(oracle, _marketIdentifier, 1, 4*10**18, address(this)); // winning stake, but nothing to win
-        roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
+        hevm.roll(getStateDetail(oracle, _marketIdentifier, 1)); // buffer period expires
     }
 
     function test_redeem_marketWithNoStakesAndNoTrades() public {
@@ -549,25 +553,25 @@ contract OracleTest_StageBufferPeriodExpired is OracleTest {
      */
     function testFail_buy() public {
         (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
-        roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
+        hevm.roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
         buy(address(this), _oracle, _marketIdentifier, 10*10**18, 10*10**18);
     }
 
     function testFail_sell() public {
         (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
-        roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
+        hevm.roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
         Oracle(oracle).sell(10*10**18, address(this), _marketIdentifier);
     }
 
     function testFail_stakeOutcome() public {
         (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
-        roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
+        hevm.roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
         stakeOutcome(_oracle, _marketIdentifier, 0, 10*10**18, address(this));
     }
 
     function testFail_setOutcome() public {
         (address _oracle, bytes32 _marketIdentifier) = prepRandomMarket();
-        roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
+        hevm.roll(getStateDetail(_oracle, _marketIdentifier, 1)); // buffer period expires
         Oracle(_oracle).setOutcome(0, _marketIdentifier);
     }
 }
@@ -594,7 +598,7 @@ contract OracleTest_StageEscalationLimitHitOracleResolves is OracleTest {
         createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
         buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
         buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
-        roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
+        hevm.roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
         for (uint i; i < oracleConfig.donEscalationLimit; i++){
             uint odd = i%2;
             address from;
@@ -615,7 +619,7 @@ contract OracleTest_StageEscalationLimitHitOracleResolves is OracleTest {
         // createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
         // buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
         // buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
-        // roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
+        // hevm.roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
         // for (uint i; i < oracleConfig.donEscalationLimit; i++){
         //     uint odd = i%2;
         //     address from;
@@ -761,7 +765,7 @@ contract OracleTest_StageResolutionPeriodExpired is OracleTest {
         createAndFundMarket(oracle, address(this), _eventIdentifier, fundAmount);
         buy(address(this), oracle, _marketIdentifier, 10*10**18, 0);
         buy(actor1, oracle, _marketIdentifier, 0, 5*10**18);
-        roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
+        hevm.roll(getStateDetail(oracle, _marketIdentifier, 0)); // market expires
         for (uint i; i < oracleConfig.donEscalationLimit; i++){
             uint odd = i%2;
             address from;
@@ -773,7 +777,7 @@ contract OracleTest_StageResolutionPeriodExpired is OracleTest {
 
             stakeOutcome(oracle, _marketIdentifier, odd, 2*10**18*(2**i), from);
         } // stake till escalation limit
-        roll(getStateDetail(oracle, _marketIdentifier, 2)); // resolution period expires
+        hevm.roll(getStateDetail(oracle, _marketIdentifier, 2)); // resolution period expires
 
     }
 

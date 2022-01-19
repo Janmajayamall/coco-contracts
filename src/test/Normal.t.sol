@@ -29,27 +29,12 @@ contract Normal is DSTest {
 
         factory = new OracleProxyFactory();
         oracleSingleton = oracleTestHelpers.deploySingleton();
-        safeSingleton = safeTestHelpers.deploySingleton();
+        safeSingleton = safeTestHelpers.deploySafeSingleton();
 
         oracleFactory = new OracleFactory();
     }
 
     event log_bytes4(bytes4 f);
-
-    function test_gff() external {
-        oracleFactory.createOracle(
-            address(this),
-            address(this),
-            address(this),
-            true,
-            5,
-            8,
-            100,
-            100,
-            100,
-            100
-        );
-    }
 
     function test_creating() external {
         bytes memory oracleMarketConfig = abi.encode(
