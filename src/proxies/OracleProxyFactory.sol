@@ -4,21 +4,24 @@ pragma solidity ^0.8.0;
 
 import "./OracleProxy.sol";
 import "./../../lib/safe-contracts/contracts/proxies/GnosisSafeProxy.sol";
+import "./../../lib/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol";
 
 contract OracleProxyFactory {
+    event OracleCreated(OracleProxy indexed oracle);
 
-    function createOracle(
-        address oracleSingleton,
-        address safeSingleton,        
-        address tokenC, 
-        bytes calldata oracleMarketConfig,
+    function createSafeAndOracle(
+        address safeProxyFactory,
+        address safeSingleton,
         address[] calldata owners,
-        uint256 safeThreshold
-    ) external returns (OracleProxy _oracleProxy) {
-        // deploy gnosis safe
-        GnosisSafeProxy _safeProxy = new GnosisSafeProxy(safeSingleton);
-
-        // setup safe
+        uint256 safeThreshold,
+        address oracleSingleton,        
+        address tokenC, 
+        bytes calldata oracleMarketConfig
+    ) public returns (OracleProxy _oracleProxy) {
+        // safe proxy factory
+        GnosisSafeProxyFactory safeFactory = GnosisSafeProxyFactory(safeProxyFactory);
+        
+        // setup safe calldata (initialzer)
         // 0xb63e800d = GnosisSafe.setup.selector
         bytes memory safeSetupCall = abi.encodeWithSelector(
             0xb63e800d, 
@@ -31,11 +34,9 @@ contract OracleProxyFactory {
             0,
             0
         );
-        assembly {
-            if eq(call(gas(), _safeProxy, 0, add(safeSetupCall, 0x20), mload(safeSetupCall), 0, 0), 0) {
-                revert(0, 0)
-            }
-        }
+
+        // deploy safe proxy with singleton, initializer, and nonce
+        GnosisSafeProxy safeProxy = safeFactory.createProxyWithNonce(safeSingleton, safeSetupCall, uint256(msg.sender));
 
         // deploy oracle
         _oracleProxy = new OracleProxy(oracleSingleton);
@@ -61,12 +62,14 @@ contract OracleProxyFactory {
 
         // update manager
         // 0x58aba00f = Oracle.updateManager.selector
-        bytes memory updateManagerCall = abi.encodeWithSelector(0x58aba00f,  address(_safeProxy));
+        bytes memory updateManagerCall = abi.encodeWithSelector(0x58aba00f,  address(safeProxy));
         assembly {
             if eq(call(gas(), _oracleProxy, 0, add(updateManagerCall, 0x20), mload(updateManagerCall), 0, 0), 0) {
                 revert(0, 0)
             }
         }
+
+        emit OracleCreated(_oracleProxy);
     }
 
 }

@@ -16,8 +16,8 @@ TokenDistributor=0x96BDc3F593F82fa355DE1174E140DCEf99Fe102D
 
 
 # mint max meme tokens to token distributor
-estimate=$(seth estimate $MemeToken "mint(address,uint256)" $TokenDistributor $(seth --max-uint 256))
-seth send $MemeToken "mint(address,uint256)" $TokenDistributor $(seth --max-uint 256) --gas $estimate
+# estimate=$(seth estimate $MemeToken "mint(address,uint256)" $TokenDistributor $(seth --max-uint 256))
+# seth send $MemeToken mint(address,uint256)" $TokenDistributor $(seth --max-uint 256) --gas $estimate
 
 # # give max allowance to market router for MemeToken
 # estimate=$(seth estimate $MemeToken "approve(address,uint256)" $MarketRouter $(seth --max-uint 256))
@@ -41,3 +41,13 @@ seth send $MemeToken "mint(address,uint256)" $TokenDistributor $(seth --max-uint
 # # claim tokens
 # estimate=$(seth estimate $TokenDistributor "claim(address,uint256)" $DEPLOYER $(seth --to-wei 1 eth))
 # seth send $TokenDistributor "claim(address,uint256)" $DEPLOYER $(seth --to-wei 1 eth) --gas $estimate
+
+# create new gnosis safe
+
+ARB_RINKEBY_SAFE_PROXY_FACTORY=0xdab2a175778821840db4a839301ffc1693cf1792
+ARB_RINKEBY_SAFE_SINGLETON=0xb28cBabDf7b55336C02a751b6AD3Ac342fD6eEec
+# estimate=$(seth estimate $RINKEBY_SAFE_PROXY_FACTORY "createProxyWithNonce(address,bytes,uint256)" $RINKEBY_SAFE_SINGLETON "" 12)
+
+# estimate 0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2 "createProxyWithNonce(address,bytes,uint256)" 0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552 "" 13
+
+# send 0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2 "createProxyWithNonce(address,bytes,uint256)" 0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552 "" 12 --gas 250000 --private-key bff706dc5bb72ac228325d17223776d6474a8ad0c2f6dec26838840bac652b7b 
