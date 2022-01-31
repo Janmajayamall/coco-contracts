@@ -12,12 +12,12 @@ contract OracleProxyFactory {
     function createSafeAndOracle(
         address safeProxyFactory,
         address safeSingleton,
-        address[] calldata owners,
+        address[] memory owners,
         uint256 safeThreshold,
         address oracleSingleton,        
         address tokenC, 
         bytes calldata oracleMarketConfig
-    ) public returns (OracleProxy _oracleProxy) {
+    ) public returns (OracleProxy oracleProxy) {
         // safe proxy factory
         GnosisSafeProxyFactory safeFactory = GnosisSafeProxyFactory(safeProxyFactory);
         
@@ -36,17 +36,40 @@ contract OracleProxyFactory {
         );
 
         // deploy safe proxy with singleton, initializer, and nonce
-        GnosisSafeProxy safeProxy = safeFactory.createProxyWithNonce(safeSingleton, safeSetupCall, uint256(msg.sender));
+        GnosisSafeProxy safeProxy = safeFactory.createProxyWithNonce(safeSingleton, safeSetupCall, uint256(uint160(msg.sender)));
 
+        // deploy oracle proxy
+        oracleProxy = createOracleWithSafe(address(safeProxy), oracleSingleton, tokenC, oracleMarketConfig);
+    }
+
+    function createSafeAndOracleWithSenderAsOwner(
+        address safeProxyFactory,
+        address safeSingleton,
+        uint256 safeThreshold,
+        address oracleSingleton,        
+        address tokenC, 
+        bytes calldata oracleMarketConfig
+    ) external returns (OracleProxy oracleProxy) {
+        address[] memory owners = new address[](1);
+        owners[0] = msg.sender;
+        oracleProxy = createSafeAndOracle(safeProxyFactory, safeSingleton, owners, safeThreshold, oracleSingleton, tokenC, oracleMarketConfig);
+    }
+
+    function createOracleWithSafe(
+        address safe,
+        address oracleSingleton,        
+        address tokenC, 
+        bytes calldata oracleMarketConfig
+    ) public returns (OracleProxy oracleProxy) {
         // deploy oracle
-        _oracleProxy = new OracleProxy(oracleSingleton);
+        oracleProxy = new OracleProxy(oracleSingleton);
 
         // setup oracle
         // update market configs
         // 0x94eb6f2f = Oracle.updateMarketConfig.selector
         bytes memory updateMarketConfigCall = bytes.concat(bytes4(0x94eb6f2f), oracleMarketConfig);
         assembly {
-            if eq(call(gas(), _oracleProxy, 0, add(updateMarketConfigCall, 0x20), mload(updateMarketConfigCall), 0, 0), 0) {
+            if eq(call(gas(), oracleProxy, 0, add(updateMarketConfigCall, 0x20), mload(updateMarketConfigCall), 0, 0), 0) {
                 revert(0, 0)
             }
         }
@@ -55,21 +78,21 @@ contract OracleProxyFactory {
         // 0x29d06108 = Oracle.updateCollateralToken.selector
         bytes memory updateCollateralToken = abi.encodeWithSelector(0x29d06108, tokenC);
         assembly {
-            if eq(call(gas(), _oracleProxy, 0, add(updateCollateralToken, 0x20), mload(updateCollateralToken), 0, 0), 0) {
+            if eq(call(gas(), oracleProxy, 0, add(updateCollateralToken, 0x20), mload(updateCollateralToken), 0, 0), 0) {
                 revert(0, 0)
             }
         }
 
         // update manager
         // 0x58aba00f = Oracle.updateManager.selector
-        bytes memory updateManagerCall = abi.encodeWithSelector(0x58aba00f,  address(safeProxy));
+        bytes memory updateManagerCall = abi.encodeWithSelector(0x58aba00f,  address(safe));
         assembly {
-            if eq(call(gas(), _oracleProxy, 0, add(updateManagerCall, 0x20), mload(updateManagerCall), 0, 0), 0) {
+            if eq(call(gas(), oracleProxy, 0, add(updateManagerCall, 0x20), mload(updateManagerCall), 0, 0), 0) {
                 revert(0, 0)
             }
         }
 
-        emit OracleCreated(_oracleProxy);
+        emit OracleCreated(oracleProxy);
     }
 
 }
