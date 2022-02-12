@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 interface IOracleEvents {
-    event MarketCreated(bytes32 indexed marketIdentifier, address creator, bytes32 eventIdentifier, uint fundingAmount);
+    event MarketCreated(bytes32 indexed marketIdentifier, address creator);
     event OutcomeBought(bytes32 indexed marketIdentifier, address by, uint amountC, uint amount0, uint amount1);
     event OutcomeSold(bytes32 indexed marketIdentifier, address by, uint amountC, uint amount0, uint amount1);
     event OutcomeStaked(bytes32 indexed marketIdentifier, address by, uint amount, uint8 outcome);

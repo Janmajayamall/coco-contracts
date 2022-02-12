@@ -4,11 +4,10 @@ pragma solidity ^0.8.0;
 
 interface IOracle {
     function getOutcomeTokenIds(bytes32 marketIdentifier) external pure returns (uint,uint);
-    function getReserveTokenIds(bytes32 marketIdentifier) external pure returns (uint,uint);
     function getMarketIdentifier(address _creator, bytes32 _eventIdentifier) external view returns (bytes32 marketIdentifier);
     function collateralToken() external view returns (address);
     function outcomeReserves(bytes32 marketIdentifier) external view returns (uint256, uint256);
-    function marketDetails(bytes32 marketIdentifier) external view returns (address, uint32, uint32);
+    function marketDetails(bytes32 marketIdentifier) external view returns (address, uint96);
     function stateDetails(bytes32 marketIdentifier) external view returns (
         uint32,
         uint32,
@@ -20,8 +19,6 @@ interface IOracle {
         uint8,
         uint8
     );
-    function staking(bytes32 marketIdentifier) external view returns (uint256, address, address, uint8);
-    function stakingReserves(bytes32 marketIdentifier) external view returns (uint256, uint256);
     function creators(bytes32 marketIdentifier) external view returns (address);
     function manager() external view returns (address);
     // function balanceOf(address _owner, uint256 _id) external view returns (uint256);

@@ -14,22 +14,41 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
 
     using Transfers for IERC20;
 
-    /*
-        marketIdentifier = keccack256(abi.encode(creator, eventIdentifier, address(this)))
-    */
+    // ERRORS
+    error UnAuthenticated();
+    error ZeroManagerAddress();
+    error GroupInActive();
+
+    error MarketExists();
+    error CreateMarketAmountsMismatch();
+    error ZeroAmount();
+    error MarketPeriodExpired();
+    error MarketBufferPeriodExpired();
+    error MarketResolutionPeriodExpired();
+    error MarketNotResolved();
+    error BuyFPMMInvarianceViolated();
+    error SellFPMMInvarianceViolated();
+    error OutcomeAlreadySet();
+    error InvalidOutcome();
+    error OutcomeNotSet();
+    error BalanceError();
+
+    error ZeroPeriodBuffer();
+    error ZeroEscalationLimit();
+    error InvalidFee();
+
+    uint256 internal constant ONE = 1e18;
+
+    mapping(bytes32 => address) public override creators;
     mapping(bytes32 => StateDetails) public override stateDetails;
-    mapping(bytes32 => StakesInfo) public override stakesInfo;
-    mapping(bytes32 => uint256) public stakes;
-
-
     mapping(bytes32 => MarketDetails) public override marketDetails;
     mapping(bytes32 => Reserves) public override outcomeReserves;
-    mapping(bytes32 => StakingReserves) public override stakingReserves;
+    mapping(bytes32 => StakesInfo) public stakesInfo;
+    mapping(bytes32 => uint256) public stakes;
 
     address public override collateralToken;
     GlobalConfig public globalConfig;
     mapping(address => uint) public cReserves;
-
     address public override manager; 
 
     constructor() {
@@ -39,32 +58,28 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         manager = address(1);
     }
 
-    function isAuthorised() internal view returns (bool) {
-        address _manager = manager;
-        return(msg.sender == _manager || _manager == address(0));
-    }
-
-
     function atMarketFunded(bytes32 marketIdentifier) internal view returns (bool) {
         StateDetails memory _details = stateDetails[marketIdentifier];
-        if (_details.stage == uint8(Stages.MarketFunded) && block.timestamp < _details.expiresAt) return true;
-        return false;
+        if (!(
+            _details.stage == uint8(Stages.MarketFunded) 
+            && block.timestamp < _details.expiresAt
+        )) revert MarketPeriodExpired();
     }
 
-    function isMarketClosed(bytes32 marketIdentifier) internal returns (bool, uint8){
+    function atMarketClosed(bytes32 marketIdentifier) internal returns (uint8){
         StateDetails memory _stateDetails = stateDetails[marketIdentifier];    
         if (_stateDetails.stage != uint8(Stages.MarketClosed)){
             if(
-                _stateDetails.stage != uint8(Stages.MarketCreated) && 
-                (
-                    (_stateDetails.stage != uint8(Stages.MarketResolve) && block.number >= _stateDetails.donBufferEndsAtBlock && (_stateDetails.donBufferBlocks == 0 || _stateDetails.donEscalationLimit != 0))
-                    || (block.number >=  _stateDetails.resolutionEndsAtBlock && (_stateDetails.stage == uint8(Stages.MarketResolve) || _stateDetails.donEscalationLimit == 0))
+               block.timestamp >= _stateDetails.donBufferEndsAt
+               && (
+                   _stateDetails.stage != uint8(Stages.MarketResolve) 
+                   || block.timestamp >= _stateDetails.resolutionBufferEndsAt
                 )
             )
             {
                 // Set outcome by expiry  
-                Staking memory _staking = staking[marketIdentifier];
-                if (_staking.staker0 == address(0) && _staking.staker1 == address(0)){
+                StakesInfo memory _stakesInfo = stakesInfo[marketIdentifier];
+                if (_stakesInfo.staker0 == address(0) && _stakesInfo.staker1 == address(0)){
                     Reserves memory _reserves = outcomeReserves[marketIdentifier];
                     if (_reserves.reserve0 < _reserves.reserve1){
                         _stateDetails.outcome = 0;
@@ -74,15 +89,16 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
                         _stateDetails.outcome = 2;
                     }
                 }else{
-                    _stateDetails.outcome = _staking.lastOutcomeStaked;
+                    _stateDetails.outcome = _stakesInfo.lastOutcomeStaked;
                 }
                 _stateDetails.stage = uint8(Stages.MarketClosed);
                 stateDetails[marketIdentifier] = _stateDetails;
-                return (true, _stateDetails.outcome); 
-            }
-           return (false, 2);
+                return _stateDetails.outcome; 
+            }else {
+                revert MarketNotResolved();
+            }           
         }
-        return (true, _stateDetails.outcome);
+        return _stateDetails.outcome;
     }
 
     function getOutcomeTokenIds(bytes32 marketIdentifier) public pure override returns (uint,uint) {
@@ -90,25 +106,6 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
             uint256(keccak256(abi.encode(marketIdentifier, 0))),
             uint256(keccak256(abi.encode(marketIdentifier, 1)))
         );
-    }
-    
-    function getReserveTokenIds(bytes32 marketIdentifier) public pure override returns (uint,uint){
-        return (
-            uint256(keccak256(abi.encode('R', marketIdentifier, 0))),
-            uint256(keccak256(abi.encode('R', marketIdentifier, 1)))
-        );
-    }
-
-    function getMarketIdentifier(address _creator, bytes32 _eventIdentifier) public view override returns (bytes32 marketIdentifier){
-        marketIdentifier = keccak256(abi.encode(_creator, _eventIdentifier, address(this)));
-    }
-
-    function getBalance(address token) public view returns (uint256 balance){
-        (bool success, bytes memory data) = token.staticcall(
-            abi.encodeWithSelector(IERC20.balanceOf.selector, address(this))
-        );
-        if (!success || data.length != 32) revert BalanceError();
-        balance= abi.decode(data, (uint256));
     }
 
     function getStakingIds(bytes32 marketIdentifier, address _of) public view returns (
@@ -119,6 +116,14 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         sId1 = keccak256(abi.encodePacked('S1', marketIdentifier, _of));
     }
 
+    function getBalance(address token) public view returns (uint256 balance){
+        (bool success, bytes memory data) = token.staticcall(
+            abi.encodeWithSelector(IERC20.balanceOf.selector, address(this))
+        );
+        if (!success || data.length != 32) revert BalanceError();
+        balance= abi.decode(data, (uint256));
+    }
+
     function createMarket(
         bytes32 marketIdentifier,
         address creator,
@@ -127,15 +132,20 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         uint256 amount0,
         uint256 amount1
     ) external {
-        // TODO take care of proxy contract checks
+        if (creators[marketIdentifier] != address(0)) revert MarketExists();
 
-        // TODO check whether market already exists or not
+        address tokenC = collateralToken;
+        uint256 tAmount = getBalance(tokenC) - cReserves[tokenC];
 
-        address cToken = collateralToken;
-        uint256 tAmount = getBalance(cToken) - cReserves[cToken];
+        if (
+            tAmount - (amount0 + amount1) != fundingAmount
+        ) revert CreateMarketAmountsMismatch();
 
-        // calculate funding amount
-        uint256 fundingAmount = tAmount - (amount0 + amount1); // TODO add error check for this
+        if (
+            fundingAmount == 0 
+            || amount0 == 0
+            || amount1 == 0
+        ) revert ZeroAmount();
 
         // distribute tokens
         (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
@@ -148,30 +158,35 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         Reserves memory _reserves;
         _reserves.reserve0 = fundingAmount;
         _reserves.reserve1 = fundingAmount;
+        outcomeReserves[marketIdentifier] = _reserves;
         
         // market details
         GlobalConfig memory _globalConfig = globalConfig;
+        if (_globalConfig.isActive == false) revert GroupInActive();
         MarketDetails memory _marketDetails;
-        _marketDetails.tokenC = cToken;
+        _marketDetails.tokenC = tokenC;
         _marketDetails.fee = _globalConfig.fee;
+        marketDetails[marketIdentifier] = _marketDetails;
 
         // state details
         StateDetails memory _stateDetails;
-        _stateDetails.expiresAt = block.timestamp + _globalConfig.expireBuffer;
-        _stateDetails.donBufferEndsAt = block.timestamp + _globalConfig.expireBuffer + _globalConfig.donBuffer;
-        _stateDetails.resolutionBufferEndsAt = block.timestamp + _stateDetails.donBufferEndsAt + _globalConfig.resolutionBuffer;
-        _stateDetails.donBuffeer = _globalConfig.donBuffer;
+        _stateDetails.expiresAt = uint32(block.timestamp) + _globalConfig.expireBuffer;
+        _stateDetails.donBufferEndsAt = uint32(block.timestamp) + _globalConfig.expireBuffer + _globalConfig.donBuffer;
+        _stateDetails.resolutionBufferEndsAt = uint32(block.timestamp) + _stateDetails.donBufferEndsAt + _globalConfig.resolutionBuffer;
+        _stateDetails.donBuffer = _globalConfig.donBuffer;
         _stateDetails.resolutionBuffer = _globalConfig.resolutionBuffer;
         _stateDetails.donEscalationLimit = _globalConfig.donEscalationLimit;
         _stateDetails.outcome = 2;
-        _stateDetails.stage = Stages.MarketFunded;
+        _stateDetails.stage = uint8(Stages.MarketFunded);
+        stateDetails[marketIdentifier] = _stateDetails;
 
-        // emit market creation
+        creators[marketIdentifier] = creator;
+
+        MarketCreated(marketIdentifier, creator);
     }
 
-
     function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external override {
-        require(atMarketFunded(marketIdentifier));
+        atMarketFunded(marketIdentifier);
 
         Reserves memory _reserves = outcomeReserves[marketIdentifier];
         (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
@@ -190,17 +205,20 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
 
         uint _reserve0New = (_reserves.reserve0 + amount) - amount0;
         uint _reserve1New = (_reserves.reserve1 + amount) - amount1;
-        require((_reserves.reserve0*_reserves.reserve1) <= (_reserve0New*_reserve1New), "ERR - INV");
+        if (
+            (_reserves.reserve0*_reserves.reserve1) <= (_reserve0New*_reserve1New)
+        ) revert BuyFPMMInvarianceViolated();
 
         _reserves.reserve0 = _reserve0New;
         _reserves.reserve1 = _reserve1New;
 
         outcomeReserves[marketIdentifier] = _reserves;
+
         emit OutcomeBought(marketIdentifier, to, amount, amount0, amount1);
     } 
 
     function sell(uint amount, address to, bytes32 marketIdentifier) external override {
-        require(atMarketFunded(marketIdentifier));
+        atMarketFunded(marketIdentifier);
 
         // transfer optimistically
         address tokenC = marketDetails[marketIdentifier].tokenC;
@@ -223,7 +241,9 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         // update outcomeReserves 
         uint _reserve0New = (_reserves.reserve0 + amount0) - amount;
         uint _reserve1New = (_reserves.reserve1 + amount1) - amount;
-        require((_reserves.reserve0*_reserves.reserve1) <= (_reserve0New*_reserve1New), "ERR - INV");
+        if (
+            (_reserves.reserve0*_reserves.reserve1) <= (_reserve0New*_reserve1New)
+        ) revert SellFPMMInvarianceViolated();
 
         _reserves.reserve0 = _reserve0New;
         _reserves.reserve1 = _reserve1New;
@@ -232,9 +252,7 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         emit OutcomeSold(marketIdentifier, to, amount, amount0, amount1);
     }
 
-
     function stakeOutcome(uint8 _for, bytes32 marketIdentifier, address to) external override {
-
         StateDetails memory _stateDetails = stateDetails[marketIdentifier];
 
         if (
@@ -243,13 +261,13 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
                 block.timestamp >= _stateDetails.expiresAt
             ) && 
             block.timestamp < _stateDetails.donBufferEndsAt)
-        ) return; // TODO add error
+        ) revert MarketBufferPeriodExpired();
 
         require(_for < 2);
 
-        address cToken = marketDetails[marketIdentifier].tokenC;
-        uint amount = getBalance(cToken); - cReserves[cToken];
-        cReserves[cToken] += amount;
+        address tokenC = marketDetails[marketIdentifier].tokenC;
+        uint amount = getBalance(tokenC) - cReserves[tokenC];
+        cReserves[tokenC] += amount;
 
         // update stakes
         (bytes32 sId0, bytes32 sId1) = getStakingIds(marketIdentifier, to);
@@ -271,10 +289,10 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         
         // escalation limit
         if (_stateDetails.donEscalationCount + 1 < _stateDetails.donEscalationLimit){
-            _stateDetails.donBufferEndsAt = block.timestamp + _stateDetails.donBuffer;
-            _stateDetails.stage = uint8(Stags.MarketBuffer);
+            _stateDetails.donBufferEndsAt = uint32(block.timestamp) + _stateDetails.donBuffer;
+            _stateDetails.stage = uint8(Stages.MarketBuffer);
         }else{
-            _stateDetails.resolutionBufferEndsAt = block.timestamp + _stateDetails.resolutionBuffer;
+            _stateDetails.resolutionBufferEndsAt = uint32(block.timestamp)+ _stateDetails.resolutionBuffer;
             _stateDetails.stage = uint8(Stages.MarketResolve);
         }
         _stateDetails.donEscalationCount += 1;
@@ -283,10 +301,8 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         emit OutcomeStaked(marketIdentifier, to, amount, _for);
     }
 
-
     function redeemWinning(address to, bytes32 marketIdentifier) external override {
-        (bool valid, uint8 outcome) = isMarketClosed(marketIdentifier);
-        require(valid);
+        uint8 outcome = atMarketClosed(marketIdentifier);
 
         Reserves memory _reserves = outcomeReserves[marketIdentifier];
         (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
@@ -319,47 +335,43 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
     }
 
     function redeemStake(bytes32 marketIdentifier, address to) external override {
-        (bool valid, uint8 outcome) = isMarketClosed(marketIdentifier);
-        require(valid);
+        uint8 outcome = atMarketClosed(marketIdentifier);
 
-        (uint sToken0Id, uint sToken1Id) = getReserveTokenIds(marketIdentifier);
-        uint sAmount0 = balanceOf(to, sToken0Id);
-        uint sAmount1 = balanceOf(to, sToken1Id);
-
-        // burn stake tokens
-        _burn(to, sToken0Id, sAmount0);
-        _burn(to, sToken1Id, sAmount1);
-        
-        StakingReserves memory _stakingReserves = stakingReserves[marketIdentifier];
-        uint winAmount;
-        if (outcome == 2){    
-            winAmount = sAmount0 + sAmount1;
-            _stakingReserves.reserveS0 -= sAmount0;
-            _stakingReserves.reserveS1 -= sAmount1;
+        (bytes32 sId0, bytes32 sId1) = getStakingIds(marketIdentifier, to);
+        uint256 winAmount;
+        if (outcome == 2){
+            winAmount = stakes[sId0];
+            winAmount += stakes[sId1];
+            stakes[sId0] = 0;
+            stakes[sId1] = 0;
         }else {
-            Staking memory _staking = staking[marketIdentifier];
-            
-            if (outcome == 0){
-                _stakingReserves.reserveS0 -= sAmount0;
-                winAmount = sAmount0;
-                if (_staking.staker0 == to || _staking.staker0 == address(0)){
-                    winAmount += _stakingReserves.reserveS1;
-                    _stakingReserves.reserveS1 = 0;
-                    _staking.staker0 = address(this);
+            StakesInfo memory _stakesInfo = stakesInfo[marketIdentifier];
+            if (outcome == 0)   { 
+                winAmount = stakes[sId0];
+                stakes[sId0] = 0;
+
+                if (
+                    _stakesInfo.staker0 == to 
+                    || _stakesInfo.staker0 == address(0)
+                ){
+                    winAmount += _stakesInfo.reserve1;
+                    _stakesInfo.reserve1 = 0;
+                    stakesInfo[marketIdentifier] = _stakesInfo;
                 }
-            }else if (outcome == 1) {
-                _stakingReserves.reserveS1 -= sAmount1;
-                winAmount = sAmount1;
-                if (_staking.staker1 == to || _staking.staker1 == address(0)){
-                    winAmount += _stakingReserves.reserveS0;
-                    _stakingReserves.reserveS0 = 0;
-                    _staking.staker1 = address(this);
+            }else {
+                winAmount = stakes[sId1];
+                stakes[sId1] = 0;
+
+                if (
+                    _stakesInfo.staker1 == to 
+                    || _stakesInfo.staker1 == address(0)
+                ){
+                    winAmount += _stakesInfo.reserve0;
+                    _stakesInfo.reserve0 = 0;
+                    stakesInfo[marketIdentifier] = _stakesInfo;
                 }
             }
-
-            staking[marketIdentifier] = _staking;
         }
-        stakingReserves[marketIdentifier] = _stakingReserves;
 
         // transfer win amount
         address tokenC = marketDetails[marketIdentifier].tokenC;
@@ -370,36 +382,29 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
     }
 
     function setOutcome(uint8 outcome, bytes32 marketIdentifier) external override {
-        require(msg.sender == manager);
-        require(outcome < 3);
+        if (msg.sender != manager) revert UnAuthenticated();
+        if (outcome > 2) revert InvalidOutcome();
         
         StateDetails memory _stateDetails = stateDetails[marketIdentifier];
-        if (_stateDetails.stage == uint8(Stages.MarketFunded) 
-            && block.number >= _stateDetails.expireAtBlock
-            && _stateDetails.donEscalationLimit == 0
-            && _stateDetails.donBufferBlocks != 0){
-            // donEscalationLimit == 0, indicates direct transition to MarketResolve after Market expiry
-            // But if donBufferPeriod == 0 as well, then transition to MarketClosed after Market expiry
-            _stateDetails.stage = uint8(Stages.MarketResolve);
-        }
-        require(_stateDetails.stage == uint8(Stages.MarketResolve) && block.number < _stateDetails.resolutionEndsAtBlock);
+        if (!(
+            _stateDetails.stage == uint8(Stages.MarketResolve)
+            && block.timestamp < _stateDetails.resolutionBufferEndsAt
+        )) revert MarketResolutionPeriodExpired();
 
+        uint256 fee;
         MarketDetails memory _marketDetails = marketDetails[marketIdentifier];
-
-        uint fee;
-        if (outcome != 2 && _marketDetails.feeNumerator != 0){
-            StakingReserves memory _stakingReserves = stakingReserves[marketIdentifier];
+        if (outcome != 2 && _marketDetails.fee != 0){
+            StakesInfo memory _stakesInfo = stakesInfo[marketIdentifier];
             if (outcome == 0) {
-                fee = (_stakingReserves.reserveS1*_marketDetails.feeNumerator)/_marketDetails.feeDenominator;
-                _stakingReserves.reserveS1 -= fee;
+                fee = (_stakesInfo.reserve1 * _marketDetails.fee) / ONE;
+                _stakesInfo.reserve1 -= fee;
             }
             if (outcome == 1) {
-                fee = (_stakingReserves.reserveS0*_marketDetails.feeNumerator)/_marketDetails.feeDenominator;
-                _stakingReserves.reserveS0 -= fee;
+                fee = (_stakesInfo.reserve0 * _marketDetails.fee) / ONE;
+                _stakesInfo.reserve0 -= fee;
             }
-            stakingReserves[marketIdentifier] = _stakingReserves;
+            stakesInfo[marketIdentifier] = _stakesInfo;
         }
-
 
         _stateDetails.outcome = outcome;
         _stateDetails.stage = uint8(Stages.MarketClosed);
@@ -407,18 +412,16 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
 
         // transfer fee
         address tokenC = marketDetails[marketIdentifier].tokenC;
-        IERC20(tokenC).transfer(msg.sender, fee);
+        IERC20(tokenC).safeTransfer(msg.sender, fee);
         cReserves[tokenC] -= fee;
 
         emit OutcomeSet(marketIdentifier);
     }
 
     function claimOutcomeReserves(bytes32 marketIdentifier) external override {
-        (bool valid, ) = isMarketClosed(marketIdentifier);
-        require(valid);
+        atMarketClosed(marketIdentifier);
 
         address _creator = creators[marketIdentifier];
-        require(_creator == msg.sender);
 
         Reserves memory _reserves = outcomeReserves[marketIdentifier];
         (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
@@ -433,112 +436,47 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         emit OutcomeReservesClaimed(marketIdentifier);
     }
 
-    /* 
-    Note on configs - 
-    1. To resolve markets to favored outcome right after market expiry, set donBufferPeriod to 0
-    2. To pass on outcome decision to oracle right after market expiry, set escalation limit to 0 & donBufferBlocks > 0
-    3. To resolve to last staked outcome right after hitting escalation limit, set resolutionBufferBlocks to 0
-
-    bytes4(keccak256("updateMarketConfig(bool,uint32,uint32,uint16,uint32,uint32,uint32)")) = 0x94eb6f2f
-     */
     function updateMarketConfig(
-        bool _isActive, 
+        bool isActive, 
         uint32 fee,
         uint16 donEscalationLimit, 
         uint32 expireBuffer, 
         uint32 donBuffer, 
         uint32 resolutionBuffer
-    ) external override {
-        require(isAuthorised());
+    ) external {
+        if (msg.sender != manager) revert UnAuthenticated();
+        if (fee > ONE) revert InvalidFee();
+        if (donEscalationLimit == 0) revert ZeroEscalationLimit();
+        if (
+            expireBuffer == 0
+            || donBuffer == 0
+            || resolutionBuffer == 0
+        ) revert ZeroPeriodBuffer();
 
-        // TODO check none of buffer periods are zero
-        
-        MarketConfig memory _marketConfig;
-        _marketConfig.isActive = _isActive;
-        _marketConfig.feeNumerator = _feeNumerator;
-        _marketConfig.feeDenominator = _feeDenominator;
-        _marketConfig.donEscalationLimit = _donEscalationLimit;
-        _marketConfig.expireBufferBlocks = _expireBufferBlocks;
-        _marketConfig.donBufferBlocks = _donBufferBlocks;
-        _marketConfig.resolutionBufferBlocks = _resolutionBufferBlocks;
-        marketConfig = _marketConfig;
+
+        GlobalConfig memory _globalConfig;
+        _globalConfig.fee = fee;
+        _globalConfig.isActive = isActive;
+        _globalConfig.donEscalationLimit = donEscalationLimit;
+        _globalConfig.expireBuffer = expireBuffer;
+        _globalConfig.donBuffer = donBuffer;
+        _globalConfig.resolutionBuffer = resolutionBuffer;
+        globalConfig = _globalConfig;
 
         emit OracleConfigUpdated();
     }
 
     function updateCollateralToken(address token) external override {
-        require(isAuthorised());
+        if (msg.sender != manager) revert UnAuthenticated();
         collateralToken = token;
         emit OracleConfigUpdated();
     }
 
     function updateManager(address to) external override {
-        require(isAuthorised());
-
-        require(to != address(0));
-
+        address _manager = manager;
+        if (msg.sender != _manager && _manager != address(0)) revert UnAuthenticated();
+        if (to == address(0)) revert ZeroManagerAddress();
         manager = to;
         emit OracleConfigUpdated();
     }
 }
-
-
-
-
-    // function createAndFundMarket(address _creator, bytes32 _eventIdentifier) external override {
-    //     address _manager = manager;
-    //     require(_manager != address(1) && _manager != address(0));
-
-    //     bytes32 marketIdentifier = getMarketIdentifier(_creator, _eventIdentifier);
-    //     require(creators[marketIdentifier] == address(0), 'Market exists');
-
-    //     address tokenC = collateralToken;
-    //     uint amount = IERC20(tokenC).balanceOf(address(this)) - cReserves[tokenC] ; // fundingAmount > 0
-    //     cReserves[tokenC] += amount;
-
-    //     (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
-
-    //     // issue outcome tokens
-    //     _mint(address(this), token0Id, amount, '');
-    //     _mint(address(this), token1Id, amount, '');
-
-    //     // set outcomeReserves
-    //     Reserves memory _reserves;
-    //     _reserves.reserve0 = amount;
-    //     _reserves.reserve1 = amount;
-    //     outcomeReserves[marketIdentifier] = _reserves; 
-
-    //     // get market config
-    //     GlobalConfig memory _marketConfig = globalConfig;
-
-    //     // set market details
-    //     MarketDetails memory _marketDetails;
-    //     _marketDetails.tokenC = tokenC;
-    //     _marketDetails.feeNumerator = _marketConfig.feeNumerator;
-    //     _marketDetails.feeDenominator = _marketConfig.feeDenominator;
-    //     marketDetails[marketIdentifier] = _marketDetails;
-
-    //     // set state details
-    //     StateDetails memory _stateDetails;
-    //     _stateDetails.donBufferBlocks = _marketConfig.donBufferBlocks;
-    //     _stateDetails.resolutionBufferBlocks = _marketConfig.resolutionBufferBlocks;
-    //     _stateDetails.donEscalationLimit = _marketConfig.donEscalationLimit;
-    //     _stateDetails.stage = uint8(Stages.MarketFunded);
-    //     _stateDetails.outcome = 2; // undecided outcome
-
-    //     _stateDetails.expireAtBlock = uint32(block.number) + _marketConfig.expireBufferBlocks;
-    //     _stateDetails.donBufferEndsAtBlock = _stateDetails.expireAtBlock + _stateDetails.donBufferBlocks; // pre-set buffer expiry for first buffer period
-    //     _stateDetails.resolutionEndsAtBlock = _stateDetails.expireAtBlock + _stateDetails.resolutionBufferBlocks; // pre-set resolution expiry, in case donEscalationLimit == 0 && donBufferBlocks > 0
-    //     stateDetails[marketIdentifier] = _stateDetails;
-
-    //     // set creator & event identifier
-    //     creators[marketIdentifier] = _creator;
-    //     // eventIdentfiiers[marketIdentifier] = _eventIdentifier;
-
-    //     require(amount > 0, 'ZERO');
-
-    //     // oracle is active
-    //     require(_marketConfig.isActive, 'Oracle inactive');
-
-    //     emit MarketCreated(marketIdentifier, _creator, _eventIdentifier, amount);
-    // }

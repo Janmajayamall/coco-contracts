@@ -30,7 +30,7 @@ interface IOracleDataTypes {
 
     struct MarketDetails {
         address tokenC;
-        uint32 fee;
+        uint96 fee;
     }
 
     struct Reserves {
