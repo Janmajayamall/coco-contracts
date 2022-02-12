@@ -5,37 +5,15 @@ pragma solidity ^0.8.0;
 import './interfaces/IOracle.sol';
 import './interfaces/IOracleDataTypes.sol';
 import './interfaces/IOracleEvents.sol';
+import './interfaces/IGroupErrors.sol';
 import './interfaces/IERC20.sol';
 import './Oracle_ERC1155.sol';
 import './Oracle_Singleton.sol';
 import './libraries/Transfers.sol';
 
-contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, IOracleEvents {
+contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, IOracleEvents, IGroupErrors {
 
     using Transfers for IERC20;
-
-    // ERRORS
-    error UnAuthenticated();
-    error ZeroManagerAddress();
-    error GroupInActive();
-
-    error MarketExists();
-    error CreateMarketAmountsMismatch();
-    error ZeroAmount();
-    error MarketPeriodExpired();
-    error MarketBufferPeriodExpired();
-    error MarketResolutionPeriodExpired();
-    error MarketNotResolved();
-    error BuyFPMMInvarianceViolated();
-    error SellFPMMInvarianceViolated();
-    error OutcomeAlreadySet();
-    error InvalidOutcome();
-    error OutcomeNotSet();
-    error BalanceError();
-
-    error ZeroPeriodBuffer();
-    error ZeroEscalationLimit();
-    error InvalidFee();
 
     uint256 internal constant ONE = 1e18;
 
@@ -301,35 +279,32 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         emit OutcomeStaked(marketIdentifier, to, amount, _for);
     }
 
-    function redeemWinning(address to, bytes32 marketIdentifier) external override {
+    function redeemWins(bytes32 marketIdentifier, uint8 tokenIndex, address to) external override {
         uint8 outcome = atMarketClosed(marketIdentifier);
+        if (tokenIndex > 1) revert InvalidTokenIndex();
 
-        Reserves memory _reserves = outcomeReserves[marketIdentifier];
+        // get & burn token amount transferred
+        uint256 tokenAmount;
         (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
+        Reserves memory _reserves = outcomeReserves[marketIdentifier];
+        if (tokenIndex == 0){
+            tokenAmount = balanceOf(address(this), token0Id) - _reserves.reserve0;
+            _burn(address(this), token0Id, tokenAmount);
+        }else {    
+            tokenAmount = balanceOf(address(this), token1Id) - _reserves.reserve1;
+            _burn(address(this), token1Id, tokenAmount);
+        }
 
-        // get amount
-        uint balance0 = balanceOf(address(this), token0Id);
-        uint balance1 = balanceOf(address(this), token1Id);
-        uint amount0 = balance0 - _reserves.reserve0;
-        uint amount1 = balance1 - _reserves.reserve1;
-
-        // burn amount
-        _burn(address(this), token0Id, amount0);
-        _burn(address(this), token1Id, amount1);
-
-        uint winAmount;
         if (outcome == 2){
-            winAmount = amount0/2 + amount1/2;
-        }else if (outcome == 0){
-            winAmount = amount0;
-        }else if (outcome == 1){
-            winAmount = amount1;
+            tokenAmount = tokenAmount/2;
+        }else if (outcome != tokenIndex){
+            tokenAmount = 0;
         }
 
         // transfer win amount
         address tokenC = marketDetails[marketIdentifier].tokenC;
-        IERC20(tokenC).transfer(to, winAmount);
-        cReserves[tokenC] -= winAmount;
+        IERC20(tokenC).transfer(to, tokenAmount);
+        cReserves[tokenC] -= tokenAmount;
 
         emit WinningRedeemed(marketIdentifier, to);
     }
