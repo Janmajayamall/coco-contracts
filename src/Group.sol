@@ -9,7 +9,7 @@ import './interfaces/IERC20.sol';
 import './Oracle_ERC1155.sol';
 import './Oracle_Singleton.sol';
 
-contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, IOracleEvents {
+contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, IOracleEvents {
     /*
         marketIdentifier = keccack256(abi.encode(creator, eventIdentifier, address(this)))
     */
@@ -98,14 +98,13 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
     }
 
     function createMarket(
-        address marketIdentifier,
+        bytes32 marketIdentifier,
         address creator,
         address challenger,
+        uint256 fundingAmount,
         uint256 amount0,
         uint256 amount1
     ) external {
-        // check whether market already exists or not
-
     
     }
 
