@@ -21,17 +21,18 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
     mapping(bytes32 => StateDetails) public override stateDetails;
     mapping(bytes32 => MarketDetails) public override marketDetails;
     mapping(bytes32 => Reserves) public override outcomeReserves;
-    mapping(bytes32 => StakesInfo) public stakesInfo;
-    mapping(bytes32 => uint256) public stakes;
+    mapping(bytes32 => StakesInfo) public override stakesInfo;
+    mapping(bytes32 => uint256) public override stakes;
 
     address public override collateralToken;
-    GlobalConfig public globalConfig;
+    GlobalConfig public override globalConfig;
     address public override manager; 
     mapping(address => uint) cReserves;
 
     modifier isAuthenticated() {
         address _manager = manager;
-        if (msg.sender != _manager && _manger != address(0)) revert UnAuthenticated();
+        if (msg.sender != _manager && _manager != address(0)) revert UnAuthenticated();
+        _;
     }
 
     constructor() {
@@ -86,7 +87,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
 
     function getOutcomeTokenIds(
         bytes32 marketIdentifier
-    ) internal view returns (uint256, uint256) {
+    ) internal pure returns (uint256, uint256) {
         return (
             uint256(keccak256(abi.encode('O1', marketIdentifier))),
             uint256(keccak256(abi.encode('O1', marketIdentifier)))
@@ -96,7 +97,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
     function getStakingIds(
         bytes32 marketIdentifier, 
         address _of
-    ) public view returns (
+    ) public pure returns (
         bytes32 sId0,
         bytes32 sId1
     ) {
@@ -124,7 +125,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         uint256 fundingAmount,
         uint256 amount0,
         uint256 amount1
-    ) external {
+    ) external override {
         if (creators[marketIdentifier] != address(0)) revert MarketExists();
 
         address tokenC = collateralToken;
@@ -153,29 +154,34 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         _reserves.reserve1 = fundingAmount;
         outcomeReserves[marketIdentifier] = _reserves;
         
-        // market details
-        GlobalConfig memory _globalConfig = globalConfig;
-        if (_globalConfig.isActive == false) revert GroupInActive();
-        MarketDetails memory _marketDetails;
-        _marketDetails.tokenC = tokenC;
-        _marketDetails.fee = _globalConfig.fee;
-        marketDetails[marketIdentifier] = _marketDetails;
+        
+        {
+           // market details
+            GlobalConfig memory _globalConfig = globalConfig;
+            if (_globalConfig.isActive == false) revert GroupInActive();
+            MarketDetails memory _marketDetails;
+            _marketDetails.tokenC = tokenC;
+            _marketDetails.fee = _globalConfig.fee;
+            marketDetails[marketIdentifier] = _marketDetails;
 
-        // state details
-        StateDetails memory _stateDetails;
-        _stateDetails.expiresAt = uint32(block.timestamp) + _globalConfig.expireBuffer;
-        _stateDetails.donBufferEndsAt = uint32(block.timestamp) + _globalConfig.expireBuffer + _globalConfig.donBuffer;
-        _stateDetails.resolutionBufferEndsAt = uint32(block.timestamp) + _stateDetails.donBufferEndsAt + _globalConfig.resolutionBuffer;
-        _stateDetails.donBuffer = _globalConfig.donBuffer;
-        _stateDetails.resolutionBuffer = _globalConfig.resolutionBuffer;
-        _stateDetails.donEscalationLimit = _globalConfig.donEscalationLimit;
-        _stateDetails.outcome = 2;
-        _stateDetails.stage = uint8(Stages.MarketFunded);
-        stateDetails[marketIdentifier] = _stateDetails;
+            // state details
+            bytes32 _marketIdentifier = marketIdentifier; // avoids stack too deep
+            StateDetails memory _stateDetails;
+            _stateDetails.expiresAt = uint32(block.timestamp) + _globalConfig.expireBuffer;
+            _stateDetails.donBuffer = _globalConfig.donBuffer;
+            _stateDetails.resolutionBuffer = _globalConfig.resolutionBuffer;
+            _stateDetails.donEscalationLimit = _globalConfig.donEscalationLimit;
+
+            _stateDetails.donBufferEndsAt = uint32(block.timestamp) + _stateDetails.expiresAt + _stateDetails.donBuffer;
+            _stateDetails.resolutionBufferEndsAt = uint32(block.timestamp) + _stateDetails.donBufferEndsAt + _stateDetails.resolutionBuffer;
+            _stateDetails.outcome = 2;
+            _stateDetails.stage = uint8(Stages.MarketFunded);
+            stateDetails[_marketIdentifier] = _stateDetails;
+        }
 
         creators[marketIdentifier] = creator;
 
-        MarketCreated(marketIdentifier, creator);
+        emit MarketCreated(marketIdentifier, creator);
     }
 
     function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external override {
@@ -433,7 +439,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         uint32 expireBuffer, 
         uint32 donBuffer, 
         uint32 resolutionBuffer
-    ) external isAuthenticated {
+    ) external isAuthenticated override {
         if (msg.sender != manager) revert UnAuthenticated();
         if (fee > ONE) revert InvalidFee();
         if (donEscalationLimit == 0) revert ZeroEscalationLimit();

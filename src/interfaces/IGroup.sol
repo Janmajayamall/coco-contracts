@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-interface IGroup {
+import "./IERC1155.sol";
+
+interface IGroup is IERC1155 {
     function collateralToken() external view returns (address);
     function globalConfig() external view returns (
         uint32,

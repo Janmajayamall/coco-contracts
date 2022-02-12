@@ -3,7 +3,8 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
-import "./Group.sol"; // replace with group interface
+import "./interfaces/IGroup.sol"; 
+import "./interfaces/IERC1155.sol";
 
 import "./GroupSigning.sol";
 
@@ -37,15 +38,14 @@ contract GroupRouter is GroupSigning {
         uint256 challengeAmount
     ) external {
         address creator = recoverSigner(marketData, signature, Scheme.EthSign);
-
-        address cToken = Group(marketData.group).collateralToken();
+        address cToken = IGroup(marketData.group).collateralToken();
 
         // transfer amount from creator & challenger
         IERC20(cToken).safeTransferFrom(creator, marketData.group, marketData.fundingAmount + marketData.amount1);
         IERC20(cToken).safeTransferFrom(msg.sender, marketData.group, challengeAmount);
         
         // call market creation
-        Group(marketData.group).createMarket(
+        IGroup(marketData.group).createMarket(
             marketData.marketIdentifier,
             creator,
             msg.sender,
@@ -56,7 +56,7 @@ contract GroupRouter is GroupSigning {
     }
 
     function buyMinOutcomeTokensWithFixedAmount(
-        Group group,
+        IGroup group,
         bytes32 marketIdentifier,
         uint256 minTokenOut,
         uint256 tokenIndex, 
@@ -80,14 +80,15 @@ contract GroupRouter is GroupSigning {
         if (a0+a1 < minTokenOut) revert TradeConditionViolated();
 
         // transfer
-        IERC20(group.marketDetails(marketIdentifier).tokenC).safeTransferFrom(msg.sender, address(group), amountIn);
+        (address tokenC,) = group.marketDetails(marketIdentifier);
+        IERC20(tokenC).safeTransferFrom(msg.sender, address(group), amountIn);
 
         // buy
         group.buy(a0, a1, msg.sender, marketIdentifier);
     }
 
     function redeemWins(
-        Group group,
+        IGroup group,
         bytes32 marketIdentifier,
         uint256 tokenAmount,
         uint8 tokenIndex
@@ -100,18 +101,18 @@ contract GroupRouter is GroupSigning {
             group.safeTransferFrom(msg.sender, address(this), t1Id, tokenAmount, '');
         }
 
-        group.redeemWins(marketIdentifier, tokenIndex, to);
+        group.redeemWins(marketIdentifier, tokenIndex, msg.sender);
     }
 
     function redeemStake(
-        Group group,
+        IGroup group,
         bytes32 marketIdentifier
     ) public {
         group.redeemStake(marketIdentifier, msg.sender);
     }
 
     function redeemWinsAndStake(
-        Group group,
+        IGroup group,
         bytes32 marketIdentifier,
         uint256 tokenAmount,
         uint8 tokenIndex
