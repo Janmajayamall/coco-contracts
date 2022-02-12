@@ -12,7 +12,7 @@ import "./libraries/Address.sol";
  * See https://eips.ethereum.org/EIPS/eip-1155
  * Based on code by: https://github.com/enjin/erc-1155 & https://github.com/gnosis/conditional-tokens-contracts/blob/master/contracts/ERC1155/ERC1155.sol
  */
-contract Oracle_ERC1155 is IERC1155, Oracle_IERC165 {
+contract Group_ERC1155 is IERC1155, Oracle_IERC165 {
 
     using Address for address;
 

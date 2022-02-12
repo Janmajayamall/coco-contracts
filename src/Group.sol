@@ -2,16 +2,16 @@
 
 pragma solidity ^0.8.0;
 
-import './interfaces/IOracle.sol';
-import './interfaces/IOracleDataTypes.sol';
-import './interfaces/IOracleEvents.sol';
+import './interfaces/IGroup.sol';
+import './interfaces/IGroupDataTypes.sol';
+import './interfaces/IGroupEvents.sol';
 import './interfaces/IGroupErrors.sol';
 import './interfaces/IERC20.sol';
-import './Oracle_ERC1155.sol';
-import './Oracle_Singleton.sol';
+import './Group_ERC1155.sol';
+import './Group_Singleton.sol';
 import './libraries/Transfers.sol';
 
-contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, IOracleEvents, IGroupErrors {
+contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGroupEvents, IGroupErrors {
 
     using Transfers for IERC20;
 
@@ -26,8 +26,13 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
 
     address public override collateralToken;
     GlobalConfig public globalConfig;
-    mapping(address => uint) public cReserves;
     address public override manager; 
+    mapping(address => uint) cReserves;
+
+    modifier isAuthenticated() {
+        address _manager = manager;
+        if (msg.sender != _manager && _manger != address(0)) revert UnAuthenticated();
+    }
 
     constructor() {
         // Oracle is intended to be used as an singleton.
@@ -79,14 +84,19 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         return _stateDetails.outcome;
     }
 
-    function getOutcomeTokenIds(bytes32 marketIdentifier) public pure override returns (uint,uint) {
+    function getOutcomeTokenIds(
+        bytes32 marketIdentifier
+    ) internal view returns (uint256, uint256) {
         return (
-            uint256(keccak256(abi.encode(marketIdentifier, 0))),
-            uint256(keccak256(abi.encode(marketIdentifier, 1)))
+            uint256(keccak256(abi.encode('O1', marketIdentifier))),
+            uint256(keccak256(abi.encode('O1', marketIdentifier)))
         );
     }
 
-    function getStakingIds(bytes32 marketIdentifier, address _of) public view returns (
+    function getStakingIds(
+        bytes32 marketIdentifier, 
+        address _of
+    ) public view returns (
         bytes32 sId0,
         bytes32 sId1
     ) {
@@ -94,9 +104,14 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         sId1 = keccak256(abi.encodePacked('S1', marketIdentifier, _of));
     }
 
-    function getBalance(address token) public view returns (uint256 balance){
+    function getBalance(
+        address token
+    ) internal view returns (uint256 balance){
         (bool success, bytes memory data) = token.staticcall(
-            abi.encodeWithSelector(IERC20.balanceOf.selector, address(this))
+            abi.encodeWithSelector(
+                IERC20.balanceOf.selector, 
+                address(this)
+            )
         );
         if (!success || data.length != 32) revert BalanceError();
         balance= abi.decode(data, (uint256));
@@ -418,7 +433,7 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         uint32 expireBuffer, 
         uint32 donBuffer, 
         uint32 resolutionBuffer
-    ) external {
+    ) external isAuthenticated {
         if (msg.sender != manager) revert UnAuthenticated();
         if (fee > ONE) revert InvalidFee();
         if (donEscalationLimit == 0) revert ZeroEscalationLimit();
@@ -438,20 +453,19 @@ contract Group is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, I
         _globalConfig.resolutionBuffer = resolutionBuffer;
         globalConfig = _globalConfig;
 
-        emit OracleConfigUpdated();
+        emit ConfigUpdated();
     }
 
-    function updateCollateralToken(address token) external override {
-        if (msg.sender != manager) revert UnAuthenticated();
+    function updateCollateralToken(address token) external override isAuthenticated {
         collateralToken = token;
-        emit OracleConfigUpdated();
+        emit ConfigUpdated();
     }
 
-    function updateManager(address to) external override {
+    function updateManager(address to) external override isAuthenticated {
         address _manager = manager;
         if (msg.sender != _manager && _manager != address(0)) revert UnAuthenticated();
         if (to == address(0)) revert ZeroManagerAddress();
         manager = to;
-        emit OracleConfigUpdated();
+        emit ConfigUpdated();
     }
 }

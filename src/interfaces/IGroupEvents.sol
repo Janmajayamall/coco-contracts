@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IOracleEvents {
+interface IGroupEvents {
     event MarketCreated(bytes32 indexed marketIdentifier, address creator);
     event OutcomeBought(bytes32 indexed marketIdentifier, address by, uint amountC, uint amount0, uint amount1);
     event OutcomeSold(bytes32 indexed marketIdentifier, address by, uint amountC, uint amount0, uint amount1);
@@ -11,6 +11,6 @@ interface IOracleEvents {
     event OutcomeReservesClaimed(bytes32 indexed marketIdentifier);
     event WinningRedeemed(bytes32 indexed marketIdentifier, address by);
     event StakedRedeemed(bytes32 indexed marketIdentifier, address by);
-    event OracleConfigUpdated();
+    event ConfigUpdated();
     event DelegateChanged(address indexed to);
 }

@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 
-interface IOracleDataTypes {
+interface IGroupDataTypes {
     struct StakesInfo {
         uint8 lastOutcomeStaked;
         address staker0;

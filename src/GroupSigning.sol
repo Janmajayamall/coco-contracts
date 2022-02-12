@@ -3,11 +3,11 @@
 pragma solidity ^0.8.0;
 
 import "./libraries/GroupMarket.sol";
-import "./interfaces/IEIP1271Verifier.sol"
+import "./interfaces/IEIP1271Verifier.sol";
 
 /// ref - https://github.com/gnosis/gp-v2-contracts/blob/main/src/contracts/mixins/GPv2Signing.sol
 abstract contract GroupSigning {
-    
+
     enum Scheme {
         Eip712,
         EthSign,

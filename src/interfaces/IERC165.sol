@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
  * @title ERC165
  * @dev https://github.com/ethereum/EIPs/blob/master/EIPS/eip-165.md
  */
-interface Oracle_IERC165 {
+interface IERC165 {
 
     /**
      * @notice Query if a contract implements an interface
