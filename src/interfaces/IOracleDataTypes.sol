@@ -4,19 +4,22 @@ pragma solidity ^0.8.0;
 
 
 interface IOracleDataTypes {
-    struct Staking {
-        uint256 lastAmountStaked;
+    struct StakesInfo {
+        uint8 lastOutcomeStaked;
         address staker0;
         address staker1;
-        uint8 lastOutcomeStaked;
+        uint256 reserve0;
+        uint256 reserve1;
+        uint256 lastAmountStaked;
     }
 
     struct StateDetails {
-        uint32 expireAtBlock;
-        uint32 donBufferEndsAtBlock;
-        uint32 resolutionEndsAtBlock;
-        uint32 donBufferBlocks; 
-        uint32 resolutionBufferBlocks;
+        uint32 expiresAt;
+        uint32 donBufferEndsAt;
+        uint32 resolutionBufferEndsAt;
+
+        uint32 donBuffer; 
+        uint32 resolutionBuffer;
 
         uint16 donEscalationCount;
         uint16 donEscalationLimit;
@@ -27,8 +30,7 @@ interface IOracleDataTypes {
 
     struct MarketDetails {
         address tokenC;
-        uint32 feeNumerator;
-        uint32 feeDenominator;
+        uint32 fee;
     }
 
     struct Reserves {
@@ -41,18 +43,16 @@ interface IOracleDataTypes {
         uint256 reserveS1;
     }
 
-    struct MarketConfig {
-        uint32 feeNumerator;
-        uint32 feeDenominator;
-        uint32 expireBufferBlocks;
-        uint32 donBufferBlocks;
-        uint32 resolutionBufferBlocks;
+    struct GlobalConfig {
+        uint32 fee;
+        uint32 expireBuffer;
+        uint32 donBuffer;
+        uint32 resolutionBuffer;
         uint16 donEscalationLimit;
         bool isActive;
     }
 
     enum Stages {
-        MarketCreated,
         MarketFunded,
         MarketBuffer,
         MarketResolve,
