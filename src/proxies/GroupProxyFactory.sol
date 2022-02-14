@@ -9,13 +9,14 @@ import "./../../lib/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol"
 contract GroupProxyFactory {
     event GroupCreated(GroupProxy indexed group);
 
-    function createSafeAndOracle(
+    function createSafeAndGroup(
         address safeProxyFactory,
         address safeSingleton,
         address[] memory owners,
         uint256 safeThreshold,
         address groupSingleton,        
         address tokenC, 
+        uint256 donReservesLimit,
         bytes calldata groupMarketConfig
     ) public returns (GroupProxy groupProxy) {
         // safe proxy factory
@@ -39,30 +40,40 @@ contract GroupProxyFactory {
         GnosisSafeProxy safeProxy = safeFactory.createProxyWithNonce(safeSingleton, safeSetupCall, uint256(uint160(msg.sender)));
 
         // deploy group proxy
-        groupProxy = createOracleWithSafe(address(safeProxy), groupSingleton, tokenC, groupMarketConfig);
+        groupProxy = createGroupWithSafe(address(safeProxy), groupSingleton, tokenC, donReservesLimit, groupMarketConfig);
     }
 
-    function createOracleWithSafe(
+    function createGroupWithSafe(
         address safe,
         address groupSingleton,        
         address tokenC, 
-        bytes calldata groupMarketConfig
+        uint256 donReservesLimit,
+        bytes calldata groupGlobalConfig
     ) public returns (GroupProxy groupProxy) {
-        // deploy oracle
+        // deploy group
         groupProxy = new GroupProxy(groupSingleton);
 
-        // setup oracle
+        // setup group
         // update market configs
-        // 0x94eb6f2f = Oracle.updateMarketConfig.selector
-        bytes memory updateMarketConfigCall = bytes.concat(bytes4(0x94eb6f2f), groupMarketConfig);
+        // c0a7fdc5 = group.updateGlobalConfig.selector
+        bytes memory updateGlobalConfigCall = bytes.concat(bytes4(0xc0a7fdc5), groupGlobalConfig);
         assembly {
-            if eq(call(gas(), groupProxy, 0, add(updateMarketConfigCall, 0x20), mload(updateMarketConfigCall), 0, 0), 0) {
+            if eq(call(gas(), groupProxy, 0, add(updateGlobalConfigCall, 0x20), mload(updateGlobalConfigCall), 0, 0), 0) {
+                revert(0, 0)
+            }
+        }
+
+        // update donReservesLimit
+        // 48438dac = group.updateDonReservesLimit.selector 
+        bytes memory updateDonReservesLimit = abi.encodeWithSelector(0x48438dac, donReservesLimit);
+        assembly {
+            if eq(call(gas(), groupProxy, 0, add(updateDonReservesLimit, 0x20), mload(updateDonReservesLimit), 0, 0), 0) {
                 revert(0, 0)
             }
         }
 
         // update collateral token
-        // 0x29d06108 = Oracle.updateCollateralToken.selector
+        // 0x29d06108 = group.updateCollateralToken.selector
         bytes memory updateCollateralToken = abi.encodeWithSelector(0x29d06108, tokenC);
         assembly {
             if eq(call(gas(), groupProxy, 0, add(updateCollateralToken, 0x20), mload(updateCollateralToken), 0, 0), 0) {
@@ -71,8 +82,8 @@ contract GroupProxyFactory {
         }
 
         // update manager
-        // 0x58aba00f = Oracle.updateManager.selector
-        bytes memory updateManagerCall = abi.encodeWithSelector(0x58aba00f,  address(safe));
+        // 0x58aba00f = group.updateManager.selector
+        bytes memory updateManagerCall = abi.encodeWithSelector(0x58aba00f,  safe);
         assembly {
             if eq(call(gas(), groupProxy, 0, add(updateManagerCall, 0x20), mload(updateManagerCall), 0, 0), 0) {
                 revert(0, 0)
@@ -82,16 +93,17 @@ contract GroupProxyFactory {
         emit GroupCreated(groupProxy);
     }
 
-    function createSafeAndOracleWithSenderAsOwner(
+    function createSafeAndGroupWithSenderAsOwner(
         address safeProxyFactory,
         address safeSingleton,
         uint256 safeThreshold,
         address groupSingleton,        
         address tokenC, 
+        uint256 donReservesLimit,
         bytes calldata groupMarketConfig
     ) external returns (GroupProxy groupProxy) {
         address[] memory owners = new address[](1);
         owners[0] = msg.sender;
-        groupProxy = createSafeAndOracle(safeProxyFactory, safeSingleton, owners, safeThreshold, groupSingleton, tokenC, groupMarketConfig);
+        groupProxy = createSafeAndGroup(safeProxyFactory, safeSingleton, owners, safeThreshold, groupSingleton, tokenC, donReservesLimit, groupMarketConfig);
     }
 }

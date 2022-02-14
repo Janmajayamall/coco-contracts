@@ -103,13 +103,15 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
         cReserves[tokenC] = tokenBalance;
 
         if (
-            tAmount == (amount0 + amount1)
+            tAmount != (amount0 + amount1)
         ) revert CreateMarketAmountsMismatch();
 
         if (
             amount0 == 0 ||
             amount1 == 0
         ) revert ZeroAmount();
+
+        emit MarketCreated(marketIdentifier, creator, challenger);
 
         // amount1 is creator's initial stake AND amount 0 is challenger's stake.
         // Therefore, amount0 is a challenge to amount1 and should be double of amount1
@@ -138,6 +140,7 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
         });
         marketStakeInfo[marketIdentifier] = stakeInfo;
 
+        bytes32 _marketIdentifier = marketIdentifier; // avoids stack too deep
         // update market details
         GlobalConfig memory _globalConfig = globalConfig;
         MarketDetails memory details = MarketDetails({
@@ -145,6 +148,7 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
             fee: _globalConfig.fee,
             outcome: 0 // new temporary outcome is 0, since 1 was challenged
         });
+        marketDetails[_marketIdentifier] = details;
 
         // update market state
         MarketState memory marketState = MarketState({
@@ -154,11 +158,9 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
             resolutionBufferEndsAt: 0
         });
 
-        nextState(marketIdentifier, reserves, marketState);
+        nextState(_marketIdentifier, reserves, marketState);
 
         if (_globalConfig.isActive == false) revert GroupInActive();
-
-        emit MarketCreated(marketIdentifier, creator);
     }
 
     function challenge(
@@ -208,7 +210,7 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
         // check whether limit has been reached
         nextState(marketIdentifier, reserves, marketState);
 
-        emit Challanged(marketIdentifier, to, amount, _for);
+        emit Challenged(marketIdentifier, to, amount, _for);
     }
 
     function redeem(bytes32 marketIdentifier, address to) external override {

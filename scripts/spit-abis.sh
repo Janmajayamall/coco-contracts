@@ -6,9 +6,6 @@ set -eo pipefail
 . $(dirname $0)/common.sh
 
 
-MarketRouter=$(spit_abi MarketRouter)
-OracleFactory=$(spit_abi OracleFactory)
-Oracle=$(spit_abi Oracle)
-OracleHelper=$(spit_abi OracleHelper)
-TokenDistributor=$(spit_abi TokenDistributor)
-Caller=$(spit_abi helpers/Caller)
+Group=$(spit_abi Group)
+# GroupProxyFactory=$(spit_abi GroupProxyFactory)
+GroupRouter=$(spit_abi GroupRouter)

@@ -12,13 +12,14 @@ contract TestToken is IERC20 {
 
     uint256 private _totalSupply;
 
-    string constant private _name = "Test-J";
-    string constant private _symbol = "TEST_J";
+    string constant private _name = "Test_USD";
+    string constant private _symbol = "T_USD";
 
     address public immutable owner;
 
     constructor() {
         owner = msg.sender;
+        _mint(msg.sender, type(uint256).max);
     }
 
     function name() public view virtual returns (string memory) {
