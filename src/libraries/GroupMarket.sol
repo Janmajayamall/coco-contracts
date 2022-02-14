@@ -6,7 +6,6 @@ library GroupMarket {
     struct MarketData {
         address group;
         bytes32 marketIdentifier;
-        uint256 fundingAmount;
         uint256 amount1;
     }
 

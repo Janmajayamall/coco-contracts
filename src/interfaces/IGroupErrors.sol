@@ -5,24 +5,16 @@ interface IGroupErrors {
     error UnAuthenticated();
     error ZeroManagerAddress();
     error GroupInActive();
-
     error MarketExists();
     error CreateMarketAmountsMismatch();
     error ZeroAmount();
     error AmountNotDouble();
-    error MarketPeriodExpired();
-    error MarketBufferPeriodExpired();
-    error MarketResolutionPeriodExpired();
-    error MarketNotResolved();
-    error BuyFPMMInvarianceViolated();
-    error SellFPMMInvarianceViolated();
-    error OutcomeAlreadySet();
     error InvalidOutcome();
-    error InvalidTokenIndex();
+    error InvalidChallengeCall();
+    error InvalidRedeemCall();
+    error InvalidSetOutcomeCall();
     error OutcomeNotSet();
     error BalanceError();
-
     error ZeroPeriodBuffer();
-    error ZeroEscalationLimit();
     error InvalidFee();
 }

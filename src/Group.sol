@@ -11,23 +11,23 @@ import './Group_ERC1155.sol';
 import './Group_Singleton.sol';
 import './libraries/Transfers.sol';
 
-contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGroupEvents, IGroupErrors {
+contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroupErrors {
 
     using Transfers for IERC20;
 
     uint256 internal constant ONE = 1e18;
     string internal constant S_ID = 'S_Group_v1';
 
-    mapping(bytes32 => MarketState) public marketStates;
-    mapping(bytes32 => MarketDetails) public marketDetails;
+    mapping(bytes32 => MarketState) public override marketStates;
+    mapping(bytes32 => MarketDetails) public override marketDetails;
     mapping(bytes32 => MarketReserves) public override marketReserves;
     mapping(bytes32 => MarketStakeInfo) public override marketStakeInfo;
-    mapping(bytes32 => uint256) public stakes; // maps stakedId to stake
+    mapping(bytes32 => uint256) public override stakes; // maps stakedId to stake
 
     GlobalConfig public override globalConfig;
-    uint256 public donReservesLimit;
+    uint256 public override donReservesLimit;
     address public override collateralToken;
-    mapping(address => uint256) cReserves;
+    mapping(address => uint256) public override cReserves;
     address public override manager; 
 
     modifier isAuthenticated() {
@@ -46,7 +46,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
     function getStakingIds(
         bytes32 marketIdentifier, 
         address _of
-    ) public pure returns (
+    ) internal pure returns (
         bytes32 sId0,
         bytes32 sId1
     ) {
@@ -173,9 +173,9 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         if (
             marketState.donBufferEndsAt <= block.timestamp 
             || marketState.donBufferEndsAt == 0
-        ) revert(); // TODO throw error of challenge period expired
+        ) revert InvalidChallengeCall();
 
-        if (_for > 1) revert(); // TODO invalid outcome _for
+        if (_for > 1) revert InvalidOutcome();
 
         MarketDetails memory details = marketDetails[marketIdentifier];
 
@@ -208,7 +208,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         // check whether limit has been reached
         nextState(marketIdentifier, reserves, marketState);
 
-        emit ChallangedSuccessfully(marketIdentifier, to, amount, _for);
+        emit Challanged(marketIdentifier, to, amount, _for);
     }
 
     function redeem(bytes32 marketIdentifier, address to) external override {
@@ -227,7 +227,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
                 marketState.resolutionBufferEndsAt != 0 
                 &&  marketState.resolutionBufferEndsAt < block.timestamp
             ))
-        ) revert();
+        ) revert InvalidRedeemCall();
 
         (bytes32 sId0, bytes32 sId1) = getStakingIds(marketIdentifier, to);
         uint256 winAmount;
@@ -281,7 +281,6 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         emit Redeemed(marketIdentifier, to);
     }
 
-
     function setOutcome(uint8 outcome, bytes32 marketIdentifier) external override isAuthenticated {
         if (outcome > 2) revert InvalidOutcome();
         
@@ -291,7 +290,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         if (
             block.timestamp >= marketState.resolutionBufferEndsAt
             || marketState.resolutionBufferEndsAt == 0
-        ) revert();
+        ) revert InvalidSetOutcomeCall();
 
         uint256 fee;
         MarketDetails memory details = marketDetails[marketIdentifier];
@@ -312,7 +311,8 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         marketDetails[marketIdentifier] = details;
 
         marketState.donBufferEndsAt = 0;
-        marketState.resolutionBufferEndsAt = uint32(block.timestamp) - 1;
+        // end resolution buffer period
+        marketState.resolutionBufferEndsAt = uint64(block.timestamp) - 1;
         marketStates[marketIdentifier] = marketState;
 
         // transfer fee
@@ -325,11 +325,10 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
 
     function updateGlobalConfig(
         bool isActive, 
-        uint32 fee,
-        uint32 donBuffer, 
-        uint32 resolutionBuffer
-    ) external isAuthenticated override {
-        if (msg.sender != manager) revert UnAuthenticated();
+        uint64 fee,
+        uint64 donBuffer, 
+        uint64 resolutionBuffer
+    ) external override isAuthenticated {
         if (fee > ONE) revert InvalidFee();
         if (
             donBuffer == 0 || resolutionBuffer == 0
@@ -347,7 +346,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         emit ConfigUpdated();
     }
 
-    function updateDonReservesLimit(uint256 newLimit) external isAuthenticated {
+    function updateDonReservesLimit(uint256 newLimit) external override isAuthenticated {
         donReservesLimit = newLimit;
         emit ConfigUpdated();
     }

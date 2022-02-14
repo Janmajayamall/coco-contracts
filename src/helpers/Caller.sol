@@ -13,10 +13,10 @@ contract Caller {
     }
 
     function marketExistsInOracle(address oracle, bytes32 marketIdentifier) external view returns (bool){
-        address creator = IGroup(oracle).creators(marketIdentifier);
-        if (creator != address(0)){
-            return true;
-        }
+        // address creator = IGroup(oracle).creators(marketIdentifier);
+        // if (creator != address(0)){
+        //     return true;
+        // }
         return false;
     }
 

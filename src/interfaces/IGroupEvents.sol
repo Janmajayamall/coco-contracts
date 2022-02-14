@@ -4,14 +4,8 @@ pragma solidity ^0.8.0;
 
 interface IGroupEvents {
     event MarketCreated(bytes32 indexed marketIdentifier, address creator);
-    event OutcomeBought(bytes32 indexed marketIdentifier, address by, uint amountC, uint amount0, uint amount1);
-    event OutcomeSold(bytes32 indexed marketIdentifier, address by, uint amountC, uint amount0, uint amount1);
-    event OutcomeStaked(bytes32 indexed marketIdentifier, address by, uint amount, uint8 outcome);
-    event OutcomeSet(bytes32 indexed marketIdentifier);
-    event OutcomeReservesClaimed(bytes32 indexed marketIdentifier);
-    event WinningRedeemed(bytes32 indexed marketIdentifier, address by);
+    event Challanged(bytes32 indexed marketIdentifier, address by, uint amount, uint8 outcome);
     event Redeemed(bytes32 indexed marketIdentifier, address by);
+    event OutcomeSet(bytes32 indexed marketIdentifier);
     event ConfigUpdated();
-    event DelegateChanged(address indexed to);
-    event ChallangedSuccessfully(bytes32 indexed marketIdentifier, address by, uint amount, uint8 outcome);
 }
