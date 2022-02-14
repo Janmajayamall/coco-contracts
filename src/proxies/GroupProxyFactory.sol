@@ -9,7 +9,7 @@ import "./../../lib/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol"
 contract GroupProxyFactory {
     event GroupCreated(GroupProxy indexed group);
 
-    function createSafeAndOracle(
+    function createSafeAndGroup(
         address safeProxyFactory,
         address safeSingleton,
         address[] memory owners,
@@ -39,21 +39,21 @@ contract GroupProxyFactory {
         GnosisSafeProxy safeProxy = safeFactory.createProxyWithNonce(safeSingleton, safeSetupCall, uint256(uint160(msg.sender)));
 
         // deploy group proxy
-        groupProxy = createOracleWithSafe(address(safeProxy), groupSingleton, tokenC, groupMarketConfig);
+        groupProxy = createGroupWithSafe(address(safeProxy), groupSingleton, tokenC, groupMarketConfig);
     }
 
-    function createOracleWithSafe(
+    function createGroupWithSafe(
         address safe,
         address groupSingleton,        
         address tokenC, 
         bytes calldata groupMarketConfig
     ) public returns (GroupProxy groupProxy) {
-        // deploy oracle
+        // deploy group
         groupProxy = new GroupProxy(groupSingleton);
 
-        // setup oracle
+        // setup group
         // update market configs
-        // 0x94eb6f2f = Oracle.updateMarketConfig.selector
+        // 0x94eb6f2f = Group.updateMarketConfig.selector
         bytes memory updateMarketConfigCall = bytes.concat(bytes4(0x94eb6f2f), groupMarketConfig);
         assembly {
             if eq(call(gas(), groupProxy, 0, add(updateMarketConfigCall, 0x20), mload(updateMarketConfigCall), 0, 0), 0) {
@@ -62,7 +62,7 @@ contract GroupProxyFactory {
         }
 
         // update collateral token
-        // 0x29d06108 = Oracle.updateCollateralToken.selector
+        // 0x29d06108 = Group.updateCollateralToken.selector
         bytes memory updateCollateralToken = abi.encodeWithSelector(0x29d06108, tokenC);
         assembly {
             if eq(call(gas(), groupProxy, 0, add(updateCollateralToken, 0x20), mload(updateCollateralToken), 0, 0), 0) {
@@ -71,7 +71,7 @@ contract GroupProxyFactory {
         }
 
         // update manager
-        // 0x58aba00f = Oracle.updateManager.selector
+        // 0x58aba00f = Group.updateManager.selector
         bytes memory updateManagerCall = abi.encodeWithSelector(0x58aba00f,  address(safe));
         assembly {
             if eq(call(gas(), groupProxy, 0, add(updateManagerCall, 0x20), mload(updateManagerCall), 0, 0), 0) {
@@ -82,7 +82,7 @@ contract GroupProxyFactory {
         emit GroupCreated(groupProxy);
     }
 
-    function createSafeAndOracleWithSenderAsOwner(
+    function createSafeAndGroupWithSenderAsOwner(
         address safeProxyFactory,
         address safeSingleton,
         uint256 safeThreshold,
@@ -92,6 +92,6 @@ contract GroupProxyFactory {
     ) external returns (GroupProxy groupProxy) {
         address[] memory owners = new address[](1);
         owners[0] = msg.sender;
-        groupProxy = createSafeAndOracle(safeProxyFactory, safeSingleton, owners, safeThreshold, groupSingleton, tokenC, groupMarketConfig);
+        groupProxy = createSafeAndGroup(safeProxyFactory, safeSingleton, owners, safeThreshold, groupSingleton, tokenC, groupMarketConfig);
     }
 }
