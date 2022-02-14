@@ -4,58 +4,34 @@ pragma solidity ^0.8.0;
 
 
 interface IGroupDataTypes {
-    struct StakesInfo {
+    struct MarketStakeInfo {
         uint8 lastOutcomeStaked;
         address staker0;
         address staker1;
-        uint256 reserve0;
-        uint256 reserve1;
         uint256 lastAmountStaked;
     }
+    struct MarketReserves {
+        uint256 reserve0;
+        uint256 reserve1;
+    }
 
-    struct StateDetails {
-        uint32 expiresAt;
+    struct MarketState {
         uint32 donBufferEndsAt;
         uint32 resolutionBufferEndsAt;
-
         uint32 donBuffer; 
         uint32 resolutionBuffer;
-
-        uint16 donEscalationCount;
-        uint16 donEscalationLimit;
-        
         uint8 outcome;
-        uint8 stage;
     }
 
     struct MarketDetails {
         address tokenC;
-        uint96 fee;
-    }
-
-    struct Reserves {
-        uint256 reserve0;
-        uint256 reserve1;
-    }
-
-    struct StakingReserves {
-        uint256 reserveS0;
-        uint256 reserveS1;
+        uint32 fee;
     }
 
     struct GlobalConfig {
         uint32 fee;
-        uint32 expireBuffer;
         uint32 donBuffer;
         uint32 resolutionBuffer;
-        uint16 donEscalationLimit;
         bool isActive;
-    }
-
-    enum Stages {
-        MarketFunded,
-        MarketBuffer,
-        MarketResolve,
-        MarketClosed
     }
 }

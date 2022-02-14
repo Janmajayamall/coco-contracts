@@ -16,18 +16,19 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
     using Transfers for IERC20;
 
     uint256 internal constant ONE = 1e18;
+    string internal constant S_ID = 'S_Group_v1';
 
-    mapping(bytes32 => address) public override creators;
-    mapping(bytes32 => StateDetails) public override stateDetails;
-    mapping(bytes32 => MarketDetails) public override marketDetails;
-    mapping(bytes32 => Reserves) public override outcomeReserves;
-    mapping(bytes32 => StakesInfo) public override stakesInfo;
-    mapping(bytes32 => uint256) public override stakes;
+    mapping(bytes32 => MarketState) public marketStates;
+    mapping(bytes32 => MarketDetails) public marketDetails;
+    mapping(bytes32 => MarketReserves) public override marketReserves;
+    mapping(bytes32 => MarketStakeInfo) public override marketStakeInfo;
+    mapping(bytes32 => uint256) public stakes; // maps stakedId to stake
 
-    address public override collateralToken;
     GlobalConfig public override globalConfig;
+    uint256 public donReservesLimit;
+    address public override collateralToken;
+    mapping(address => uint256) cReserves;
     address public override manager; 
-    mapping(address => uint) cReserves;
 
     modifier isAuthenticated() {
         address _manager = manager;
@@ -42,58 +43,6 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         manager = address(1);
     }
 
-    function atMarketFunded(bytes32 marketIdentifier) internal view returns (bool) {
-        StateDetails memory _details = stateDetails[marketIdentifier];
-        if (!(
-            _details.stage == uint8(Stages.MarketFunded) 
-            && block.timestamp < _details.expiresAt
-        )) revert MarketPeriodExpired();
-    }
-
-    function atMarketClosed(bytes32 marketIdentifier) internal returns (uint8){
-        StateDetails memory _stateDetails = stateDetails[marketIdentifier];    
-        if (_stateDetails.stage != uint8(Stages.MarketClosed)){
-            if(
-               block.timestamp >= _stateDetails.donBufferEndsAt
-               && (
-                   _stateDetails.stage != uint8(Stages.MarketResolve) 
-                   || block.timestamp >= _stateDetails.resolutionBufferEndsAt
-                )
-            )
-            {
-                // Set outcome by expiry  
-                StakesInfo memory _stakesInfo = stakesInfo[marketIdentifier];
-                if (_stakesInfo.staker0 == address(0) && _stakesInfo.staker1 == address(0)){
-                    Reserves memory _reserves = outcomeReserves[marketIdentifier];
-                    if (_reserves.reserve0 < _reserves.reserve1){
-                        _stateDetails.outcome = 0;
-                    }else if (_reserves.reserve1 < _reserves.reserve0){
-                        _stateDetails.outcome = 1;
-                    }else {
-                        _stateDetails.outcome = 2;
-                    }
-                }else{
-                    _stateDetails.outcome = _stakesInfo.lastOutcomeStaked;
-                }
-                _stateDetails.stage = uint8(Stages.MarketClosed);
-                stateDetails[marketIdentifier] = _stateDetails;
-                return _stateDetails.outcome; 
-            }else {
-                revert MarketNotResolved();
-            }           
-        }
-        return _stateDetails.outcome;
-    }
-
-    function getOutcomeTokenIds(
-        bytes32 marketIdentifier
-    ) internal pure returns (uint256, uint256) {
-        return (
-            uint256(keccak256(abi.encode('O1', marketIdentifier))),
-            uint256(keccak256(abi.encode('O1', marketIdentifier)))
-        );
-    }
-
     function getStakingIds(
         bytes32 marketIdentifier, 
         address _of
@@ -101,8 +50,8 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         bytes32 sId0,
         bytes32 sId1
     ) {
-        sId0 = keccak256(abi.encodePacked('S0', marketIdentifier, _of));
-        sId1 = keccak256(abi.encodePacked('S1', marketIdentifier, _of));
+        sId0 = keccak256(abi.encodePacked(S_ID, marketIdentifier, _of));
+        sId1 = keccak256(abi.encodePacked(S_ID, marketIdentifier, _of));
     }
 
     function getBalance(
@@ -118,347 +67,261 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         balance= abi.decode(data, (uint256));
     }
 
+    function nextState(
+        bytes32 marketIdentifier,
+        MarketReserves memory _marketReserves,
+        MarketState memory _marketState
+    ) internal {
+        if (
+            donReservesLimit <= (_marketReserves.reserve0 + _marketReserves.reserve1)
+        ){
+            _marketState.resolutionBufferEndsAt = _marketState.resolutionBuffer + block.timestamp;
+            _marketState.donBufferEndsAt = 0;
+        }else {
+            _marketState.donBufferEndsAt = _marketState.donBuffer + block.timestamp;
+            _marketState.resolutionBufferEndsAt = 0;
+        }
+        marketStates[marketIdentifier] = _marketState;
+    }
+
     function createMarket(
         bytes32 marketIdentifier,
         address creator,
         address challenger,
-        uint256 fundingAmount,
         uint256 amount0,
         uint256 amount1
     ) external override {
-        if (creators[marketIdentifier] != address(0)) revert MarketExists();
+        if (marketStates[marketIdentifier].donBuffer != 0) revert MarketExists();
 
         address tokenC = collateralToken;
-        uint256 tAmount = getBalance(tokenC) - cReserves[tokenC];
+        uint256 tokenBalance = getBalance(tokenC);
+        uint256 tAmount = tokenBalance - cReserves[tokenC];
+        cReserves[tokenC] = tokenBalance;
 
         if (
-            tAmount - (amount0 + amount1) != fundingAmount
+            tAmount == (amount0 + amount1)
         ) revert CreateMarketAmountsMismatch();
 
         if (
-            fundingAmount == 0 
-            || amount0 == 0
-            || amount1 == 0
+            amount0 == 0 ||
+            amount1 == 0
         ) revert ZeroAmount();
 
-        // distribute tokens
-        (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
-        _mint(address(this), token0Id, tAmount, '');
-        _mint(address(this), token1Id, tAmount, '');
-        _transfer(address(this), creator, token1Id, amount1);
-        _transfer(address(this), challenger, token0Id, amount0);
+        // amount1 is creator's initial stake AND amount 0 is challenger's stake.
+        // Therefore, amount0 is a challenge to amount1 and should be double of amount1
+        if ( amount1 * 2 > amount0 ) revert AmountNotDouble();
 
-        // set reserves
-        Reserves memory _reserves;
-        _reserves.reserve0 = fundingAmount;
-        _reserves.reserve1 = fundingAmount;
-        outcomeReserves[marketIdentifier] = _reserves;
-        
-        
-        {
-           // market details
-            GlobalConfig memory _globalConfig = globalConfig;
-            if (_globalConfig.isActive == false) revert GroupInActive();
-            MarketDetails memory _marketDetails;
-            _marketDetails.tokenC = tokenC;
-            _marketDetails.fee = _globalConfig.fee;
-            marketDetails[marketIdentifier] = _marketDetails;
+        // get staking ids for marketIdentifier
+        (, bytes32 creatorS1Id ) = getStakingIds(marketIdentifier, creator);
+        (bytes32 challengerS0Id, ) = getStakingIds(marketIdentifier, challenger);
 
-            // state details
-            bytes32 _marketIdentifier = marketIdentifier; // avoids stack too deep
-            StateDetails memory _stateDetails;
-            _stateDetails.expiresAt = uint32(block.timestamp) + _globalConfig.expireBuffer;
-            _stateDetails.donBuffer = _globalConfig.donBuffer;
-            _stateDetails.resolutionBuffer = _globalConfig.resolutionBuffer;
-            _stateDetails.donEscalationLimit = _globalConfig.donEscalationLimit;
+        // update stakes
+        stakes[creatorS1Id] = amount1;
+        stakes[challengerS0Id] = amount0;
 
-            _stateDetails.donBufferEndsAt = uint32(block.timestamp) + _stateDetails.expiresAt + _stateDetails.donBuffer;
-            _stateDetails.resolutionBufferEndsAt = uint32(block.timestamp) + _stateDetails.donBufferEndsAt + _stateDetails.resolutionBuffer;
-            _stateDetails.outcome = 2;
-            _stateDetails.stage = uint8(Stages.MarketFunded);
-            stateDetails[_marketIdentifier] = _stateDetails;
-        }
+        // update market reserves
+        MarketReserves memory reserves = MarketReserves({
+            reserve0: amount0,
+            reserve1: amount1
+        });
+        marketReserves[marketIdentifier] = reserves;
 
-        creators[marketIdentifier] = creator;
+        // update market stakes info
+        MarketStakeInfo memory stakeInfo = MarketStakeInfo({
+            lastOutcomeStaked: 0,
+            staker0: challenger,
+            staker1: creator,
+            lastAmountStaked: amount0
+        });
+        marketStakeInfo[marketIdentifier] = stakeInfo;
+
+        // update market details
+        GlobalConfig memory _globalConfig = globalConfig;
+        MarketDetails memory details = MarketDetails({
+            tokenC: tokenC,
+            fee: _globalConfig.fee
+        });
+
+        // update market state
+        MarketState memory marketState = MarketState({
+            donBuffer: _globalConfig.donBuffer,
+            resolutionBuffer: _globalConfig.resolutionBuffer,
+            dontBufferEndsAt: 0,
+            resolutionBufferEndsAt: 0,
+            outcome: 2
+        });
+
+        nextState(marketIdentifier, reserves, marketState);
+
+        if (_globalConfig.isActive == false) revert GroupInActive();
 
         emit MarketCreated(marketIdentifier, creator);
     }
 
-    function buy(uint amount0, uint amount1, address to, bytes32 marketIdentifier) external override {
-        atMarketFunded(marketIdentifier);
+    function challenge(
+        uint8 _for, 
+        bytes32 marketIdentifier, 
+        address to
+    ) external override {
+        MarketState memory marketState = marketStates[marketIdentifier];
 
-        Reserves memory _reserves = outcomeReserves[marketIdentifier];
-        (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
-
-        address tokenC = marketDetails[marketIdentifier].tokenC;
-        uint amount = IERC20(tokenC).balanceOf(address(this)) - cReserves[tokenC];
-        cReserves[tokenC] += amount;
-
-        // buy outcome tokens
-        _mint(address(this), token0Id, amount, '');
-        _mint(address(this), token1Id, amount, '');
-
-        // transfer outcome tokens
-        _transfer(address(this), to, token0Id, amount0);
-        _transfer(address(this), to, token1Id, amount1);
-
-        uint _reserve0New = (_reserves.reserve0 + amount) - amount0;
-        uint _reserve1New = (_reserves.reserve1 + amount) - amount1;
-        if (
-            (_reserves.reserve0*_reserves.reserve1) <= (_reserve0New*_reserve1New)
-        ) revert BuyFPMMInvarianceViolated();
-
-        _reserves.reserve0 = _reserve0New;
-        _reserves.reserve1 = _reserve1New;
-
-        outcomeReserves[marketIdentifier] = _reserves;
-
-        emit OutcomeBought(marketIdentifier, to, amount, amount0, amount1);
-    } 
-
-    function sell(uint amount, address to, bytes32 marketIdentifier) external override {
-        atMarketFunded(marketIdentifier);
-
-        // transfer optimistically
-        address tokenC = marketDetails[marketIdentifier].tokenC;
-        IERC20(tokenC).transfer(to, amount);
-        cReserves[tokenC] -= amount;
-
-        Reserves memory _reserves = outcomeReserves[marketIdentifier];
-        (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
-
-        // check transferred outcome tokens
-        uint balance0 = balanceOf(address(this), token0Id);
-        uint balance1 = balanceOf(address(this), token1Id);
-        uint amount0 = balance0 - _reserves.reserve0;
-        uint amount1 = balance1 - _reserves.reserve1;
-
-        // burn outcome tokens
-        _burn(address(this), token0Id, amount);
-        _burn(address(this), token1Id, amount);
-
-        // update outcomeReserves 
-        uint _reserve0New = (_reserves.reserve0 + amount0) - amount;
-        uint _reserve1New = (_reserves.reserve1 + amount1) - amount;
-        if (
-            (_reserves.reserve0*_reserves.reserve1) <= (_reserve0New*_reserve1New)
-        ) revert SellFPMMInvarianceViolated();
-
-        _reserves.reserve0 = _reserve0New;
-        _reserves.reserve1 = _reserve1New;
-        outcomeReserves[marketIdentifier] = _reserves;
-
-        emit OutcomeSold(marketIdentifier, to, amount, amount0, amount1);
-    }
-
-    function stakeOutcome(uint8 _for, bytes32 marketIdentifier, address to) external override {
-        StateDetails memory _stateDetails = stateDetails[marketIdentifier];
-
-        if (
-            !((
-                _stateDetails.stage == uint8(Stages.MarketBuffer) ||
-                block.timestamp >= _stateDetails.expiresAt
-            ) && 
-            block.timestamp < _stateDetails.donBufferEndsAt)
-        ) revert MarketBufferPeriodExpired();
-
-        require(_for < 2);
+        if (marketState.donBufferEndsAt <= block.timestamp || marketState.donBufferEndsAt == 0) revert(); // TODO throw error of challenge period expired
+        if (_for > 1) revert(); // TODO invalid outcome _for
 
         address tokenC = marketDetails[marketIdentifier].tokenC;
-        uint amount = getBalance(tokenC) - cReserves[tokenC];
-        cReserves[tokenC] += amount;
+        uint256 tokenBalance = getBalance(tokenC);
+        uint amount = tokenBalance - cReserves[tokenC];
+        cReserves[tokenC] = tokenBalance;
 
         // update stakes
         (bytes32 sId0, bytes32 sId1) = getStakingIds(marketIdentifier, to);
-        StakesInfo memory _stakesInfo = stakesInfo[marketIdentifier];
+        MarketStakeInfo memory stakeInfo = marketStakeInfo[marketIdentifier];
+        MarketReserves memory reserves = marketReserves[marketIdentifier];
         if (_for == 0){
             stakes[sId0] += amount;
-            _stakesInfo.reserve0 += amount;
-            _stakesInfo.staker0 = to;
-            _stakesInfo.lastOutcomeStaked = 0;
+            stakeInfo.staker0 = to;
+            stakeInfo.lastOutcomeStaked = 0;
+            reserves.reserve0 += amount;
         }else {
             stakes[sId1] += amount;
-            _stakesInfo.reserve1 += amount;
-            _stakesInfo.staker1 = to;
-            _stakesInfo.lastOutcomeStaked = 1;
+            stakeInfo.staker1 = to;
+            stakeInfo.lastOutcomeStaked = 1;
+            reserves.reserve1 += amount;
         }
-        require(_stakesInfo.lastAmountStaked * 2 <= amount && amount != 0);
-        _stakesInfo.lastAmountStaked = amount;
-        stakesInfo[marketIdentifier] = _stakesInfo;
-        
-        // escalation limit
-        if (_stateDetails.donEscalationCount + 1 < _stateDetails.donEscalationLimit){
-            _stateDetails.donBufferEndsAt = uint32(block.timestamp) + _stateDetails.donBuffer;
-            _stateDetails.stage = uint8(Stages.MarketBuffer);
-        }else{
-            _stateDetails.resolutionBufferEndsAt = uint32(block.timestamp)+ _stateDetails.resolutionBuffer;
-            _stateDetails.stage = uint8(Stages.MarketResolve);
-        }
-        _stateDetails.donEscalationCount += 1;
-        stateDetails[marketIdentifier] = _stateDetails;
+        if (stakeInfo.lastAmountStaked * 2 > amount) revert AmountNotDouble();
+        stakeInfo.lastAmountStaked = amount;
+        marketStakeInfo[marketIdentifier] = stakeInfo;
+        marketReserves[marketIdentifier] = reserves;
 
-        emit OutcomeStaked(marketIdentifier, to, amount, _for);
+        // check whether limit has been reached
+        nextState(marketIdentifier, reserves, marketState);
+
+        emit ChallangedSuccessfully(marketIdentifier, to, amount, _for);
     }
 
-    function redeemWins(bytes32 marketIdentifier, uint8 tokenIndex, address to) external override {
-        uint8 outcome = atMarketClosed(marketIdentifier);
-        if (tokenIndex > 1) revert InvalidTokenIndex();
+    function redeem(bytes32 marketIdentifier, address to) external override {
+        MarketState memory marketState = marketStates[marketIdentifier];
 
-        // get & burn token amount transferred
-        uint256 tokenAmount;
-        (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
-        Reserves memory _reserves = outcomeReserves[marketIdentifier];
-        if (tokenIndex == 0){
-            tokenAmount = balanceOf(address(this), token0Id) - _reserves.reserve0;
-            _burn(address(this), token0Id, tokenAmount);
-        }else {    
-            tokenAmount = balanceOf(address(this), token1Id) - _reserves.reserve1;
-            _burn(address(this), token1Id, tokenAmount);
-        }
-
-        if (outcome == 2){
-            tokenAmount = tokenAmount/2;
-        }else if (outcome != tokenIndex){
-            tokenAmount = 0;
-        }
-
-        // transfer win amount
-        address tokenC = marketDetails[marketIdentifier].tokenC;
-        IERC20(tokenC).transfer(to, tokenAmount);
-        cReserves[tokenC] -= tokenAmount;
-
-        emit WinningRedeemed(marketIdentifier, to);
-    }
-
-    function redeemStake(bytes32 marketIdentifier, address to) external override {
-        uint8 outcome = atMarketClosed(marketIdentifier);
+        if (
+            block.timestamp < marketState.resolutionBufferEndsAt
+            || marketState.resolutionBufferEndsAt == 0
+        ) revert();
 
         (bytes32 sId0, bytes32 sId1) = getStakingIds(marketIdentifier, to);
         uint256 winAmount;
-        if (outcome == 2){
+        MarketReserves memory reserves = marketReserves[marketIdentifier];
+        if (marketState.outcome == 2){
             winAmount = stakes[sId0];
-            winAmount += stakes[sId1];
+            reserves.reserve0 -= winAmount;
+
+            uint256 s1 = stakes[sId1];
+            winAmount += s1;
+            reserves.reserve1 -= s1;
+
             stakes[sId0] = 0;
             stakes[sId1] = 0;
         }else {
-            StakesInfo memory _stakesInfo = stakesInfo[marketIdentifier];
-            if (outcome == 0)   { 
+            MarketStakeInfo memory stakeInfo = marketStakeInfo[marketIdentifier];
+            if (marketState.outcome == 0){
                 winAmount = stakes[sId0];
+                reserves.reserve0 -= winAmount;
                 stakes[sId0] = 0;
-
+                
                 if (
-                    _stakesInfo.staker0 == to 
-                    || _stakesInfo.staker0 == address(0)
+                    stakeInfo.staker0 == to 
+                    || stakeInfo.staker0 == address(0)
                 ){
-                    winAmount += _stakesInfo.reserve1;
-                    _stakesInfo.reserve1 = 0;
-                    stakesInfo[marketIdentifier] = _stakesInfo;
+                    winAmount += reserves.reserve1;
+                    reserves.reserve1 = 0;
                 }
-            }else {
+            }else if (marketState.outcome == 1){
                 winAmount = stakes[sId1];
+                reserves.reserve1 -= winAmount;
                 stakes[sId1] = 0;
 
                 if (
-                    _stakesInfo.staker1 == to 
-                    || _stakesInfo.staker1 == address(0)
+                    stakeInfo.staker1 == to 
+                    || stakeInfo.staker1 == address(0)
                 ){
-                    winAmount += _stakesInfo.reserve0;
-                    _stakesInfo.reserve0 = 0;
-                    stakesInfo[marketIdentifier] = _stakesInfo;
+                    winAmount += reserves.reserve0;
+                    reserves.reserve0 = 0;
                 }
             }
         }
-
+        marketReserves[marketIdentifier] = reserves;
+        
         // transfer win amount
         address tokenC = marketDetails[marketIdentifier].tokenC;
-        IERC20(tokenC).transfer(to, winAmount);
+        IERC20(tokenC).safeTransfer(to, winAmount);
         cReserves[tokenC] -= winAmount;
 
-        emit StakedRedeemed(marketIdentifier, to);
+        emit Redeemed(marketIdentifier, to);
     }
 
-    function setOutcome(uint8 outcome, bytes32 marketIdentifier) external override {
-        if (msg.sender != manager) revert UnAuthenticated();
+
+    function setOutcome(uint8 outcome, bytes32 marketIdentifier) external override isAuthenticated {
         if (outcome > 2) revert InvalidOutcome();
         
-        StateDetails memory _stateDetails = stateDetails[marketIdentifier];
-        if (!(
-            _stateDetails.stage == uint8(Stages.MarketResolve)
-            && block.timestamp < _stateDetails.resolutionBufferEndsAt
-        )) revert MarketResolutionPeriodExpired();
+        MarketState memory marketState = marketStates[marketIdentifier];
+        if (
+            block.timestamp >= marketState.resolutionBufferEndsAt
+            || marketState.resolutionBufferEndsAt == 0
+        ) revert();
 
         uint256 fee;
-        MarketDetails memory _marketDetails = marketDetails[marketIdentifier];
-        if (outcome != 2 && _marketDetails.fee != 0){
-            StakesInfo memory _stakesInfo = stakesInfo[marketIdentifier];
+        MarketDetails memory details = marketDetails[marketIdentifier];
+        if (outcome != 2 && details.fee != 0){
+            MarketReserves memory reserves = marketReserves[marketIdentifier];
             if (outcome == 0) {
-                fee = (_stakesInfo.reserve1 * _marketDetails.fee) / ONE;
-                _stakesInfo.reserve1 -= fee;
+                fee = (reserves.reserve1 * details.fee) / ONE;
+                reserves.reserve1 -= fee;
             }
             if (outcome == 1) {
-                fee = (_stakesInfo.reserve0 * _marketDetails.fee) / ONE;
-                _stakesInfo.reserve0 -= fee;
+                fee = (reserves.reserve0 * details.fee) / ONE;
+                reserves.reserve0 -= fee;
             }
-            stakesInfo[marketIdentifier] = _stakesInfo;
+            marketReserves[marketIdentifier] = reserves;
         }
 
-        _stateDetails.outcome = outcome;
-        _stateDetails.stage = uint8(Stages.MarketClosed);
-        stateDetails[marketIdentifier] = _stateDetails;
+        marketState.outcome = outcome;
+        marketState.donBufferEndsAt = 0;
+        marketState.resolutionBufferEndsAt = block.timestamp - 1;
+        marketStates[marketIdentifier] = marketState;
 
         // transfer fee
-        address tokenC = marketDetails[marketIdentifier].tokenC;
+        address tokenC = details[marketIdentifier].tokenC;
         IERC20(tokenC).safeTransfer(msg.sender, fee);
         cReserves[tokenC] -= fee;
 
         emit OutcomeSet(marketIdentifier);
     }
 
-    function claimOutcomeReserves(bytes32 marketIdentifier) external override {
-        atMarketClosed(marketIdentifier);
-
-        address _creator = creators[marketIdentifier];
-
-        Reserves memory _reserves = outcomeReserves[marketIdentifier];
-        (uint token0Id, uint token1Id) = getOutcomeTokenIds(marketIdentifier);
-
-        _transfer(address(this), _creator, token0Id, _reserves.reserve0);
-        _transfer(address(this), _creator, token1Id, _reserves.reserve1);
-
-        _reserves.reserve0 = 0;
-        _reserves.reserve1 = 0;
-        outcomeReserves[marketIdentifier] = _reserves;
-
-        emit OutcomeReservesClaimed(marketIdentifier);
-    }
-
-    function updateMarketConfig(
+    function updateGlobalConfig(
         bool isActive, 
         uint32 fee,
-        uint16 donEscalationLimit, 
-        uint32 expireBuffer, 
         uint32 donBuffer, 
         uint32 resolutionBuffer
     ) external isAuthenticated override {
         if (msg.sender != manager) revert UnAuthenticated();
         if (fee > ONE) revert InvalidFee();
-        if (donEscalationLimit == 0) revert ZeroEscalationLimit();
         if (
-            expireBuffer == 0
-            || donBuffer == 0
-            || resolutionBuffer == 0
+            donBuffer == 0 || resolutionBuffer == 0
         ) revert ZeroPeriodBuffer();
 
 
-        GlobalConfig memory _globalConfig;
-        _globalConfig.fee = fee;
-        _globalConfig.isActive = isActive;
-        _globalConfig.donEscalationLimit = donEscalationLimit;
-        _globalConfig.expireBuffer = expireBuffer;
-        _globalConfig.donBuffer = donBuffer;
-        _globalConfig.resolutionBuffer = resolutionBuffer;
+        GlobalConfig memory _globalConfig = GlobalConfig({
+            fee: fee,
+            donBuffer: donBuffer,
+            resolutionBuffer: resolutionBuffer,
+            isActive: isActive
+        });
         globalConfig = _globalConfig;
 
+        emit ConfigUpdated();
+    }
+
+    function updateDonReservesLimit(uint256 newLimit) external isAuthenticated {
+        donReservesLimit = newLimit;
         emit ConfigUpdated();
     }
 

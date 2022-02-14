@@ -9,6 +9,7 @@ interface IGroupErrors {
     error MarketExists();
     error CreateMarketAmountsMismatch();
     error ZeroAmount();
+    error AmountNotDouble();
     error MarketPeriodExpired();
     error MarketBufferPeriodExpired();
     error MarketResolutionPeriodExpired();

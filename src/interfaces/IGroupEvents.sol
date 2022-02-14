@@ -10,7 +10,8 @@ interface IGroupEvents {
     event OutcomeSet(bytes32 indexed marketIdentifier);
     event OutcomeReservesClaimed(bytes32 indexed marketIdentifier);
     event WinningRedeemed(bytes32 indexed marketIdentifier, address by);
-    event StakedRedeemed(bytes32 indexed marketIdentifier, address by);
+    event Redeemed(bytes32 indexed marketIdentifier, address by);
     event ConfigUpdated();
     event DelegateChanged(address indexed to);
+    event ChallangedSuccessfully(bytes32 indexed marketIdentifier, address by, uint amount, uint8 outcome);
 }
