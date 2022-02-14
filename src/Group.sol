@@ -75,10 +75,14 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         if (
             donReservesLimit <= (_marketReserves.reserve0 + _marketReserves.reserve1)
         ){
-            _marketState.resolutionBufferEndsAt = _marketState.resolutionBuffer + block.timestamp;
-            _marketState.donBufferEndsAt = 0;
+            // start resolution period
+            _marketState.resolutionBufferEndsAt = _marketState.resolutionBuffer + uint64(block.timestamp);
+            // end buffer period
+            _marketState.donBufferEndsAt = uint64(block.timestamp);
         }else {
-            _marketState.donBufferEndsAt = _marketState.donBuffer + block.timestamp;
+            // extend buffer period by donBuffer
+            _marketState.donBufferEndsAt = _marketState.donBuffer + uint64(block.timestamp);
+            // resolution period stays zero, since it hasn't started
             _marketState.resolutionBufferEndsAt = 0;
         }
         marketStates[marketIdentifier] = _marketState;
@@ -128,7 +132,6 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
 
         // update market stakes info
         MarketStakeInfo memory stakeInfo = MarketStakeInfo({
-            lastOutcomeStaked: 0,
             staker0: challenger,
             staker1: creator,
             lastAmountStaked: amount0
@@ -139,16 +142,16 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         GlobalConfig memory _globalConfig = globalConfig;
         MarketDetails memory details = MarketDetails({
             tokenC: tokenC,
-            fee: _globalConfig.fee
+            fee: _globalConfig.fee,
+            outcome: 0 // new temporary outcome is 0, since 1 was challenged
         });
 
         // update market state
         MarketState memory marketState = MarketState({
             donBuffer: _globalConfig.donBuffer,
             resolutionBuffer: _globalConfig.resolutionBuffer,
-            dontBufferEndsAt: 0,
-            resolutionBufferEndsAt: 0,
-            outcome: 2
+            donBufferEndsAt: 0,
+            resolutionBufferEndsAt: 0
         });
 
         nextState(marketIdentifier, reserves, marketState);
@@ -165,13 +168,20 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
     ) external override {
         MarketState memory marketState = marketStates[marketIdentifier];
 
-        if (marketState.donBufferEndsAt <= block.timestamp || marketState.donBufferEndsAt == 0) revert(); // TODO throw error of challenge period expired
+        // challenge is invalid if buffer period expired
+        // OR never started in the first place
+        if (
+            marketState.donBufferEndsAt <= block.timestamp 
+            || marketState.donBufferEndsAt == 0
+        ) revert(); // TODO throw error of challenge period expired
+
         if (_for > 1) revert(); // TODO invalid outcome _for
 
-        address tokenC = marketDetails[marketIdentifier].tokenC;
-        uint256 tokenBalance = getBalance(tokenC);
-        uint amount = tokenBalance - cReserves[tokenC];
-        cReserves[tokenC] = tokenBalance;
+        MarketDetails memory details = marketDetails[marketIdentifier];
+
+        uint256 tokenBalance = getBalance(details.tokenC);
+        uint amount = tokenBalance - cReserves[details.tokenC];
+        cReserves[details.tokenC] = tokenBalance;
 
         // update stakes
         (bytes32 sId0, bytes32 sId1) = getStakingIds(marketIdentifier, to);
@@ -180,16 +190,18 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         if (_for == 0){
             stakes[sId0] += amount;
             stakeInfo.staker0 = to;
-            stakeInfo.lastOutcomeStaked = 0;
             reserves.reserve0 += amount;
         }else {
             stakes[sId1] += amount;
             stakeInfo.staker1 = to;
-            stakeInfo.lastOutcomeStaked = 1;
             reserves.reserve1 += amount;
         }
+        // amount should atleast be twice as much as last amount
         if (stakeInfo.lastAmountStaked * 2 > amount) revert AmountNotDouble();
+
+        details.outcome = _for;
         stakeInfo.lastAmountStaked = amount;
+        marketDetails[marketIdentifier] = details;
         marketStakeInfo[marketIdentifier] = stakeInfo;
         marketReserves[marketIdentifier] = reserves;
 
@@ -202,15 +214,26 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
     function redeem(bytes32 marketIdentifier, address to) external override {
         MarketState memory marketState = marketStates[marketIdentifier];
 
+        // redeem is only valid when
+        // either buffer period expired AND resolution didn't start
+        // OR resolution period did start AND expired/ended
         if (
-            block.timestamp < marketState.resolutionBufferEndsAt
-            || marketState.resolutionBufferEndsAt == 0
+            !((
+                marketState.donBufferEndsAt <= block.timestamp 
+                && marketState.resolutionBufferEndsAt == 0
+            )
+            || 
+            (
+                marketState.resolutionBufferEndsAt != 0 
+                &&  marketState.resolutionBufferEndsAt < block.timestamp
+            ))
         ) revert();
 
         (bytes32 sId0, bytes32 sId1) = getStakingIds(marketIdentifier, to);
         uint256 winAmount;
         MarketReserves memory reserves = marketReserves[marketIdentifier];
-        if (marketState.outcome == 2){
+        MarketDetails memory details = marketDetails[marketIdentifier];
+        if (details.outcome == 2){
             winAmount = stakes[sId0];
             reserves.reserve0 -= winAmount;
 
@@ -222,7 +245,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
             stakes[sId1] = 0;
         }else {
             MarketStakeInfo memory stakeInfo = marketStakeInfo[marketIdentifier];
-            if (marketState.outcome == 0){
+            if (details.outcome == 0){
                 winAmount = stakes[sId0];
                 reserves.reserve0 -= winAmount;
                 stakes[sId0] = 0;
@@ -234,7 +257,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
                     winAmount += reserves.reserve1;
                     reserves.reserve1 = 0;
                 }
-            }else if (marketState.outcome == 1){
+            }else if (details.outcome == 1){
                 winAmount = stakes[sId1];
                 reserves.reserve1 -= winAmount;
                 stakes[sId1] = 0;
@@ -251,7 +274,7 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         marketReserves[marketIdentifier] = reserves;
         
         // transfer win amount
-        address tokenC = marketDetails[marketIdentifier].tokenC;
+        address tokenC = details.tokenC;
         IERC20(tokenC).safeTransfer(to, winAmount);
         cReserves[tokenC] -= winAmount;
 
@@ -263,6 +286,8 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
         if (outcome > 2) revert InvalidOutcome();
         
         MarketState memory marketState = marketStates[marketIdentifier];
+        // setOutcome is not valid if resolution period did not start
+        // OR resolution period expired
         if (
             block.timestamp >= marketState.resolutionBufferEndsAt
             || marketState.resolutionBufferEndsAt == 0
@@ -283,13 +308,15 @@ contract Group is Group_Singleton, Group_ERC1155, IGroup, IGroupDataTypes, IGrou
             marketReserves[marketIdentifier] = reserves;
         }
 
-        marketState.outcome = outcome;
+        details.outcome = outcome;
+        marketDetails[marketIdentifier] = details;
+
         marketState.donBufferEndsAt = 0;
-        marketState.resolutionBufferEndsAt = block.timestamp - 1;
+        marketState.resolutionBufferEndsAt = uint32(block.timestamp) - 1;
         marketStates[marketIdentifier] = marketState;
 
         // transfer fee
-        address tokenC = details[marketIdentifier].tokenC;
+        address tokenC = details.tokenC;
         IERC20(tokenC).safeTransfer(msg.sender, fee);
         cReserves[tokenC] -= fee;
 

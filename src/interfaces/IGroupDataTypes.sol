@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 
 interface IGroupDataTypes {
     struct MarketStakeInfo {
-        uint8 lastOutcomeStaked;
         address staker0;
         address staker1;
         uint256 lastAmountStaked;
@@ -16,22 +15,22 @@ interface IGroupDataTypes {
     }
 
     struct MarketState {
-        uint32 donBufferEndsAt;
-        uint32 resolutionBufferEndsAt;
-        uint32 donBuffer; 
-        uint32 resolutionBuffer;
-        uint8 outcome;
+        uint64 donBufferEndsAt;
+        uint64 resolutionBufferEndsAt;
+        uint64 donBuffer; 
+        uint64 resolutionBuffer;
     }
 
     struct MarketDetails {
         address tokenC;
-        uint32 fee;
+        uint64 fee;
+        uint8 outcome;
     }
 
     struct GlobalConfig {
-        uint32 fee;
-        uint32 donBuffer;
-        uint32 resolutionBuffer;
+        uint64 fee;
+        uint64 donBuffer;
+        uint64 resolutionBuffer;
         bool isActive;
     }
 }
