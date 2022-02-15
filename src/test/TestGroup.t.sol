@@ -34,6 +34,8 @@ contract TestGroup is DSTest {
     uint64 constant defaultResolutionBuffer = 60 * 60 * 24; // 1 day
     uint256 constant defaultDonReservesLimit = 10000000 * 10 ** 18;
 
+    uint256 constant ONE = 1e18;
+
     constructor() {
         user1 = vm.addr(PK);
     }
@@ -231,10 +233,25 @@ contract TestGroup is DSTest {
         GroupRouter _groupRouter = groupRouter;
         defaultCreateAndChallengeMarket(_group, _groupRouter, 1 * 10 ** 18, 2 * 10 ** 18);
 
+        // warp time but stay below block buffer
+        vm.warp(block.timestamp + 1000);
+
+        // round 1
         vm.prank(user1);
         _groupRouter.challenge(address(_group), defaultMarketIdentifier, 1, 4 * 10 ** 18); // user1
 
-
+        matchMarketReserves(_group, defaultMarketIdentifier, 2 * 10 ** 18, 5 * 10 ** 18);
+        matchMarketStakes(_group, defaultMarketIdentifier, user1, 0, 5 * 10 ** 18); // user1 stakes
+        matchMarketStakeInfo(_group, defaultMarketIdentifier, address(this), user1, 4 * 10 ** 18); 
+        matchMarketState(
+            _group, 
+            defaultMarketIdentifier, 
+            uint64(block.timestamp) + defaultDonBuffer, 
+            0, 
+            defaultDonBuffer, 
+            defaultResolutionBuffer
+        );
+        
     }
 
     // check that one cannot challenge after buffer time expires
@@ -270,6 +287,70 @@ contract TestGroup is DSTest {
     }
 
     function testRedeemPostBufferExpiry() public {
+        Group _group = group;
+        GroupRouter _groupRouter = groupRouter;
+        TestToken _tokenC = tokenC;
+        defaultCreateAndChallengeMarket(_group, _groupRouter, 1 * 10 ** 18, 2 * 10 ** 18);
 
+        vm.prank(user1);
+        _groupRouter.challenge(address(_group), defaultMarketIdentifier, 1, 4 * 10 ** 18); // user 1 challenges
+
+        // buffer period expires
+        vm.warp(block.timestamp + defaultDonBuffer);
+    
+        // user1 wins, since wasn't challenged before buffer period expired
+        // should win 2 * 10 ** 18 + should get their stake back
+        (uint256 balanceBefore) = _tokenC.balanceOf(user1);
+        _group.redeem(defaultMarketIdentifier, user1);
+        (uint256 balanceAfter) = _tokenC.balanceOf(user1);
+        assertEq(balanceAfter, balanceBefore + 7 * 10 ** 18); // 4 + 1 => user1's stake + 2 => address(this) stake (i.e. stake in losing outcome)
+
+        // address(this) should not win anything
+        balanceBefore = _tokenC.balanceOf(address(this));
+        _group.redeem(defaultMarketIdentifier, address(this));
+        assertEq(_tokenC.balanceOf(address(this)), balanceBefore);
     }
+
+    function testMarketTransitionsToResolutionAfterLimitHits() public {
+        Group _group = group;
+        GroupRouter _groupRouter = groupRouter;
+        TestToken _tokenC = tokenC;
+        defaultCreateAndChallengeMarket(_group, _groupRouter, 1 * 10 ** 18, 2 * 10 ** 18);
+
+        // address(this) challenges again with amount that exceeds lmimit, thus market transitions to resolution
+        _groupRouter.challenge(address(_group), defaultMarketIdentifier, 0, defaultDonReservesLimit);
+
+        // check that market state has transitioned to resolution period
+        matchMarketState(
+            _group, 
+            defaultMarketIdentifier, 
+            uint64(block.timestamp), 
+            uint64(block.timestamp) + defaultResolutionBuffer, 
+            defaultDonBuffer, 
+            defaultResolutionBuffer
+        );
+    }
+
+    function testFeeCollectionByManager() public {
+        // Timestamp is by default zero.
+        // Setting it to some other value 
+        // avoids underflow
+        vm.warp(10);  
+
+        Group _group = group;
+        GroupRouter _groupRouter = groupRouter;
+        TestToken _tokenC = tokenC;
+        defaultCreateAndChallengeMarket(_group, _groupRouter, 1 * 10 ** 18, 2 * 10 ** 18);
+
+        // address(this) challenges again with amount that exceeds lmimit, thus market transitions to resolution
+        _groupRouter.challenge(address(_group), defaultMarketIdentifier, 0, defaultDonReservesLimit);
+
+        // check fee collection after outcome is set
+        // note - address(this) is also the manager
+        uint256 balanceBefore = _tokenC.balanceOf(address(this));
+        _group.setOutcome(0, defaultMarketIdentifier); // outcone is set to 0, so fee collected is (FEE * 1)
+        assertEq(_tokenC.balanceOf(address(this))-balanceBefore, (uint256(defaultFee) * (1 * 10 ** 18))/ONE);
+    }
+
+    // function testFee
 }

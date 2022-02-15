@@ -11,6 +11,9 @@ import './Group_ERC1155.sol';
 import './Group_Singleton.sol';
 import './libraries/Transfers.sol';
 
+// tremp
+import './test/Console.sol';
+
 contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroupErrors {
 
     using Transfers for IERC20;
@@ -299,11 +302,11 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
         if (outcome != 2 && details.fee != 0){
             MarketReserves memory reserves = marketReserves[marketIdentifier];
             if (outcome == 0) {
-                fee = (reserves.reserve1 * details.fee) / ONE;
+                fee = (reserves.reserve1 * uint256(details.fee)) / ONE;
                 reserves.reserve1 -= fee;
             }
             if (outcome == 1) {
-                fee = (reserves.reserve0 * details.fee) / ONE;
+                fee = (reserves.reserve0 * uint256(details.fee)) / ONE;
                 reserves.reserve0 -= fee;
             }
             marketReserves[marketIdentifier] = reserves;
@@ -312,7 +315,6 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
         details.outcome = outcome;
         marketDetails[marketIdentifier] = details;
 
-        marketState.donBufferEndsAt = 0;
         // end resolution buffer period
         marketState.resolutionBufferEndsAt = uint64(block.timestamp) - 1;
         marketStates[marketIdentifier] = marketState;
