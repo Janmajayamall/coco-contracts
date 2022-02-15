@@ -1,6 +1,5 @@
-# Node
-node_modules
+.vscode
 
-# Dapptools
+cache/
 out/
 .env
