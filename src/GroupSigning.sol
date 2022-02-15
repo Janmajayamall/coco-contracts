@@ -25,7 +25,7 @@ abstract contract GroupSigning {
 
     uint256 private constant ECDSA_SIGNATURE_LENGTH = 65;
 
-    bytes32 domainSeparator;
+    bytes32 public domainSeparator;
 
     constructor() {
         uint256 chainId;
@@ -66,7 +66,7 @@ abstract contract GroupSigning {
     {
         require(
             encodedSignature.length == ECDSA_SIGNATURE_LENGTH,
-            "GPv2: malformed ecdsa signature"
+            "Malformed ecdsa signature"
         );
 
         bytes32 r;

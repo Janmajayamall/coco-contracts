@@ -9,7 +9,8 @@ library GroupMarket {
         uint256 amount1;
     }
 
-    bytes32 internal constant TYPE_HASH = hex"290101"; // TODO correct the TYPE_HASH
+    // keccak256("MarketData(address group, bytes32 marketIdentifier, uint256 amount1)")
+    bytes32 internal constant TYPE_HASH = hex"290101";
 
     function hash(
             MarketData memory market, 
@@ -22,7 +23,7 @@ library GroupMarket {
             // calculate datahash
             let start := sub(market, 32)
             mstore(start, TYPE_HASH)
-            let dataHash := keccak256(start, 160) // TODO correct the length of GroupMarket
+            let dataHash := keccak256(start, 128) // TODO correct the length of GroupMarket
             
             // calculate digest 
             let freePointer := mload(0x40)  
