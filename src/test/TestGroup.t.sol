@@ -61,8 +61,92 @@ contract TestGroup is DSTest {
         bytes32 sId0,
         bytes32 sId1
     ) {
-        sId0 = keccak256(abi.encodePacked("S_Group_v1", marketIdentifier, _of));
-        sId1 = keccak256(abi.encodePacked("S_Group_v1", marketIdentifier, _of));
+        sId0 = keccak256(abi.encodePacked("S_Group_v1", "0", marketIdentifier, _of));
+        sId1 = keccak256(abi.encodePacked("S_Group_v1", "1", marketIdentifier, _of));
+    }
+
+    // creator -> user1
+    // challenger -> address(this)
+    // uses default settings
+    function defaultCreateAndChallengeMarket(
+        Group _group,
+        GroupRouter _groupRouter,
+        uint256 creatorAmount,
+        uint256 challengerAmount
+        
+    ) internal {
+        // preapre marketData for user1
+        GroupMarket.MarketData memory marketData = GroupMarket.MarketData({
+            group: address(_group),
+            marketIdentifier: defaultMarketIdentifier,
+            amount1: creatorAmount
+        });
+
+        // marketData signature of user1
+        bytes memory marketDataSignature = ethSignMarketData(marketData, _groupRouter.domainSeparator(), PK);
+
+        // address(this) calls createAndChallengeMarket
+        _groupRouter.createAndChallengeMarket(marketData, marketDataSignature, challengerAmount);
+    }
+
+    function matchMarketReserves(
+        Group _group,
+        bytes32 marketIdentifier,
+        uint256 eReserve0,
+        uint256 eReserve1
+    ) internal {
+        (uint256 r0, uint256 r1) = _group.marketReserves(marketIdentifier);
+        assertEq(r0, eReserve0);
+        assertEq(r1, eReserve1);
+    }
+
+    function matchMarketStakes(
+        Group _group,
+        bytes32 marketIdentifier,
+        address _for,
+        uint256 eS0,
+        uint256 eS1
+    ) internal {
+        (bytes32 s0Id,bytes32 s1Id) = getStakingIds(marketIdentifier, _for);
+        assertEq(_group.stakes(s0Id), eS0);
+        assertEq(_group.stakes(s1Id), eS1);
+    }
+
+    function matchMarketState(
+        Group _group,
+        bytes32 marketIdentifier,
+        uint64 eDonBufferEndsAt, 
+        uint64 eResolutionBufferEndsAt,
+        uint64 eDonBuffer,
+        uint64 eResolutionBuffer
+    )  internal {
+        (
+            uint64 cDonBufferEndsAt, 
+            uint64 cResolutionBufferEndsAt,
+            uint64 cDonBuffer,
+            uint64 cResolutionBuffer
+        ) = _group.marketStates(marketIdentifier);
+        assertEq(cDonBufferEndsAt, eDonBufferEndsAt);
+        assertEq(cResolutionBufferEndsAt, eResolutionBufferEndsAt);
+        assertEq(cDonBuffer, eDonBuffer);
+        assertEq(cResolutionBuffer, eResolutionBuffer);
+    }
+
+    function matchMarketStakeInfo(
+        Group _group,
+        bytes32 marketIdentifier,
+        address eStaker0,
+        address eStaker1,
+        uint256 eLastAmountStaked
+    ) internal {
+        (
+            address cStaker0,
+            address cStaker1,
+            uint256 cLastAmountStaked
+        ) = _group.marketStakeInfo(marketIdentifier);
+        assertEq(cStaker0, eStaker0);
+        assertEq(cStaker1, eStaker1);
+        assertEq(cLastAmountStaked, eLastAmountStaked);
     }
 
     function setUp() public {
@@ -110,60 +194,82 @@ contract TestGroup is DSTest {
         Group _group = group;
         GroupRouter _groupRouter = groupRouter;
 
-        // preapre marketData for user1
-        GroupMarket.MarketData memory marketData = GroupMarket.MarketData({
-            group: address(_group),
-            marketIdentifier: defaultMarketIdentifier,
-            amount1: 1 * 10 ** 18
-        });
-
-        // marketData signature of user1
-        bytes memory marketDataSignature = ethSignMarketData(marketData, _groupRouter.domainSeparator(), PK);
-
-        // address(this) calls createAndChallengeMarket
-        _groupRouter.createAndChallengeMarket(marketData, marketDataSignature, 2 * 10 ** 18);
-
+        defaultCreateAndChallengeMarket(_group, _groupRouter, 1 * 10 ** 18, 2 * 10 ** 18);
+       
         // check stuff
 
         // check reserves
-        (uint256 r0, uint256 r1) = _group.marketReserves(defaultMarketIdentifier);
-        assertEq(r0, 2 * 10 ** 18);
-        assertEq(r1, 1 * 10 ** 18);
+        matchMarketReserves(_group, defaultMarketIdentifier, 2 * 10 ** 18, 1 * 10 ** 18);
 
         // check respective stakes
-        bytes32 s0Id;
-        bytes32 s1Id;
-        // checking stake of user1
-        (s0Id, s1Id) = getStakingIds(defaultMarketIdentifier, user1);
-        assertEq(_group.stakes(s1Id), 1 * 10 ** 18);
-        // checking stake of address(this)
-        (s0Id, s1Id) = getStakingIds(defaultMarketIdentifier, address(this));
-        assertEq(_group.stakes(s0Id), 2 * 10 ** 18);
+        matchMarketStakes(_group, defaultMarketIdentifier, user1, 0, 1 * 10 ** 18);
+        matchMarketStakes(_group, defaultMarketIdentifier, address(this), 2 * 10 ** 18, 0);
 
         // check market state 
-        (
-            uint64 cDonBufferEndsAt, 
-            uint64 cResolutionBufferEndsAt,
-            uint64 cDonBuffer,
-            uint64 cResolutionBuffer
-        ) = _group.marketStates(defaultMarketIdentifier);
-        assertEq(cDonBufferEndsAt, defaultDonBuffer + uint64(block.timestamp));
-        assertEq(cResolutionBufferEndsAt, 0);
-        assertEq(cDonBuffer, defaultDonBuffer);
-        assertEq(cResolutionBuffer, defaultResolutionBuffer);
-
+        matchMarketState(
+            _group, 
+            defaultMarketIdentifier, 
+            defaultDonBuffer + uint64(block.timestamp), 
+            0, 
+            defaultDonBuffer, 
+            defaultResolutionBuffer
+        );
+    
         // check market stake info
-        (
-            address cStaker0,
-            address cStaker1,
-            uint256 cLastAmountStaked
-        ) = _group.marketStakeInfo(defaultMarketIdentifier);
-        assertEq(cStaker0, address(this));
-        assertEq(cStaker1, user1);
-        assertEq(cLastAmountStaked, 2 * 10 ** 18);
+        matchMarketStakeInfo(
+            _group, 
+            defaultMarketIdentifier, 
+            address(this), 
+            user1, 
+            2 * 10 ** 18
+        );
     }
 
-    
+    // test subsequent challenges
+    function testChallenges()  public {
+        Group _group = group;
+        GroupRouter _groupRouter = groupRouter;
+        defaultCreateAndChallengeMarket(_group, _groupRouter, 1 * 10 ** 18, 2 * 10 ** 18);
+
+        vm.prank(user1);
+        _groupRouter.challenge(address(_group), defaultMarketIdentifier, 1, 4 * 10 ** 18); // user1
 
 
+    }
+
+    // check that one cannot challenge after buffer time expires
+    function testFailDonBufferExpired() public {
+        Group _group = group;
+        GroupRouter _groupRouter = groupRouter;
+        defaultCreateAndChallengeMarket(_group, _groupRouter, 1 * 10 ** 18, 2 * 10 ** 18);
+
+        // a few challenges
+        vm.prank(user1);
+        _groupRouter.challenge(address(_group), defaultMarketIdentifier, 1, 4 * 10 ** 18); // user1
+        _groupRouter.challenge(address(_group), defaultMarketIdentifier, 0, 8 * 10 ** 18); // addresss(this)
+        vm.prank(user1);
+        _groupRouter.challenge(address(_group), defaultMarketIdentifier, 1, 16 * 10 ** 18); // user1
+
+
+        vm.warp(block.timestamp + defaultDonBuffer);
+
+        // address(this) tries to challenge, but should fail
+        _groupRouter.challenge(address(_group), defaultMarketIdentifier, 0, 32 * 10 ** 18); // address(this)
+    }
+
+    function testOutcomeIsLastChallengePostBufferExpiry() public {
+        Group _group = group;
+        GroupRouter _groupRouter = groupRouter;
+        defaultCreateAndChallengeMarket(_group, _groupRouter, 1 * 10 ** 18, 2 * 10 ** 18);
+
+        vm.warp(block.timestamp + defaultDonBuffer);
+
+        // outcome should 0
+        (,, uint8 outcome) = _group.marketDetails(defaultMarketIdentifier);
+        assertEq(0, outcome);
+    }
+
+    function testRedeemPostBufferExpiry() public {
+
+    }
 }

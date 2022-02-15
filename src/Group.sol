@@ -50,8 +50,8 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
         bytes32 sId0,
         bytes32 sId1
     ) {
-        sId0 = keccak256(abi.encodePacked(S_ID, marketIdentifier, _of));
-        sId1 = keccak256(abi.encodePacked(S_ID, marketIdentifier, _of));
+        sId0 = keccak256(abi.encodePacked(S_ID, "0", marketIdentifier, _of));
+        sId1 = keccak256(abi.encodePacked(S_ID, "1", marketIdentifier, _of));
     }
 
     function getBalance(
