@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "./../Group.sol";
 import "./../GroupRouter.sol";
+import "./../GroupSigning.sol";
 import "./../proxies/GroupProxy.sol";
 import "./../proxies/GroupProxyFactory.sol";
 import "./../helpers/TestToken.sol";
@@ -47,10 +48,10 @@ contract TestGroup is DSTest {
         uint256 pk
     ) internal returns (bytes memory signature) {
         bytes32 digest = GroupMarket.hash(marketData, domainSeparator);
-        bytes32 ethSignDigest = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", digest)
-        );
-        (uint8 v, bytes32 r, bytes32 s ) = vm.sign(pk, ethSignDigest);
+        // bytes32 ethSignDigest = keccak256(
+        //     abi.encodePacked("\x19Ethereum Signed Message:\n32", digest)
+        // );
+        (uint8 v, bytes32 r, bytes32 s ) = vm.sign(pk, digest);
         signature = abi.encodePacked(
             r, s, v
         );
@@ -88,7 +89,7 @@ contract TestGroup is DSTest {
         bytes memory marketDataSignature = ethSignMarketData(marketData, _groupRouter.domainSeparator(), PK);
 
         // address(this) calls createAndChallengeMarket
-        _groupRouter.createAndChallengeMarket(marketData, marketDataSignature, challengerAmount);
+        _groupRouter.createAndChallengeMarket(marketData, marketDataSignature, GroupSigning.Scheme.Eip712, challengerAmount);
     }
 
     function matchMarketReserves(
@@ -176,7 +177,40 @@ contract TestGroup is DSTest {
         // user1 gives max approval to group router
         vm.prank(user1); // changes msg.sender to user1 for next call
         tokenC.approve(address(groupRouter), type(uint256).max);
+
+
+        // bytes32 k = keccak256("MarketData(address group,bytes32 marketIdentifier,uint256 amount1)");
+        // emit FF(k);
+
+        // assertTrue(false);
     }
+
+    event FuckYou(bytes32 k);
+    event FuckYou(bytes k);
+    function testSignHelper() public {
+        GroupMarket.MarketData memory _marketData = GroupMarket.MarketData({
+            group:address(0x563c8Bc414E080313870143A04Dea30C72Df7C43),
+            marketIdentifier: hex"29e7f1d6fa5a6aa908168535a734f12eb327860ce90f760e17d35f0a2ca32070",
+            amount1: uint256(50000000000000000)
+        });
+
+        uint256 pvKey = uint256(0xbff706dc5bb72ac228325d17223776d6474a8ad0c2f6dec26838840bac652b7b);
+
+        bytes memory signature = ethSignMarketData(_marketData, groupRouter.domainSeparator(), pvKey);
+        emit FuckYou(signature);
+
+        assertTrue(false);
+    
+        // bytes memory signature = hex"54438918944217a3696455cd25ded51a8f1bf6e9540f626cf0d435d41ea8854b4b16f9d2982ac3b927750a290cbe4ed0e578545e49b888e6a314e9cff046db491c";
+        // address f = groupRouter.recoverSigner(
+        //     _marketData,
+        //     signature,
+        //     GroupSigning.Scheme.EthSign
+        // );
+        // console.log(f);
+    }
+
+    // 0x54438918944217a3696455cd25ded51a8f1bf6e9540f626cf0d435d41ea8854b4b16f9d2982ac3b927750a290cbe4ed0e578545e49b888e6a314e9cff046db491c
 
     function testCreateMarket() public {
         Group _group = group;

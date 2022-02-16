@@ -9,8 +9,8 @@ library GroupMarket {
         uint256 amount1;
     }
 
-    // keccak256("MarketData(address group, bytes32 marketIdentifier, uint256 amount1)")
-    bytes32 internal constant TYPE_HASH = hex"290101";
+    // keccak256("MarketData(address group,bytes32 marketIdentifier,uint256 amount1)")
+    bytes32 internal constant TYPE_HASH = hex"b3ce180bdcf853fc3a98b5433a1774cf8266a7997fb30d79fd58f5fb41669467";
 
     function hash(
             MarketData memory market, 

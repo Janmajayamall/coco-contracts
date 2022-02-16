@@ -18,9 +18,10 @@ contract GroupRouter is GroupSigning {
     function createAndChallengeMarket(
         GroupMarket.MarketData memory marketData,
         bytes calldata signature,
+        Scheme signatureScheme,
         uint256 challengeAmount
     ) external {
-        address creator = recoverSigner(marketData, signature, Scheme.EthSign);
+        address creator = recoverSigner(marketData, signature, signatureScheme);
         address tokenC = IGroup(marketData.group).collateralToken();
 
         // transfer amount from creator & challenger

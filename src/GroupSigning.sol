@@ -32,13 +32,14 @@ abstract contract GroupSigning {
         assembly {
             chainId := chainid()
         }
+        // TODO fix this
         domainSeparator = keccak256(
             abi.encode(
                 DOMAIN_TYPE_HASH,
                 DOMAIN_NAME,
                 DOMAIN_VERSION,
-                chainId,
-                address(this)
+                uint256(421611),
+                address(0x693346084446E287074402F420157120B2Da5237)
             )
         );
     }
