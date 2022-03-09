@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.0;
 
-import "ds-test/test.sol";
+import "../../libraries/test.sol";
 import "./../../Oracle.sol";
 import "./../../libraries/Math.sol";
 import "./../../helpers/TestToken.sol";
@@ -31,7 +31,7 @@ contract OracleTestHelpers is DSTest, Hevm {
 		uint32 expireAtBlock;
         uint32 donBufferEndsAtBlock;
         uint32 resolutionEndsAtBlock;
-        uint32 donBufferBlocks; 
+        uint32 donBufferBlocks;
         uint32 resolutionBufferBlocks;
         uint16 donEscalationCount;
         uint16 donEscalationLimit;
@@ -175,7 +175,7 @@ contract OracleTestHelpers is DSTest, Hevm {
 		(uint r0, uint r1) = getOutcomeReserves(_oracle, _marketIdentifier);
 		assertEq(r0, er0);
         assertEq(r1, er1);
-	} 
+	}
 
 	function checkMarketDetails(address _oracle, bytes32 _marketIdentifier, MarketDetails memory _marketDetails) public {
 		(address tokenC, uint32 feeNum, uint32 feeDenom) = getMarketDetails(_oracle, _marketIdentifier);
@@ -260,13 +260,13 @@ contract OracleTestHelpers is DSTest, Hevm {
 		assertEq(tokenCBalanceAfter-tokenCBalanceBefore, eW);
 	}
 
-	/* 
+	/*
 	Note - This function assumes that delegate is set to the contract's address
 	 */
 	function checkPassMarketResolution(address _oracle, bytes32 _marketIdentifier, uint outcome) public {
-		uint tokenCBalanceBefore = getTokenCBalance(address(this), _oracle, _marketIdentifier);	
+		uint tokenCBalanceBefore = getTokenCBalance(address(this), _oracle, _marketIdentifier);
 		(uint sRB0, uint sRB1) = getStakingReserves(_oracle, _marketIdentifier);
-	
+
 		Oracle(_oracle).setOutcome(uint8(outcome), _marketIdentifier);
 
 		// estimate collection
@@ -315,7 +315,7 @@ contract OracleTestHelpers is DSTest, Hevm {
 	// 	) = Oracle(_oracle).stateDetails(_marketIdentifier);
 	// }
 
-	/* 
+	/*
 // 	Market types
 // 	 */
 // 	enum MarketType {
@@ -355,8 +355,8 @@ contract OracleTestHelpers is DSTest, Hevm {
 }
 
 
-/* 
-Tests I might be missing - 
+/*
+Tests I might be missing -
 1. When oracle resoles to outcome that is zero stakes
 
  */

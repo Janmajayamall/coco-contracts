@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.0;
 
-import "ds-test/test.sol";
+import "../libraries/test.sol";
 import './../libraries/Math.sol';
 
 contract MathTest is DSTest {
@@ -40,7 +40,7 @@ contract MathTest is DSTest {
         assertLe((r0*r1), ((r0+a)-a0)*(r1+a));
     }
 
-    function test_getTokenAmountToSellForAmountC(uint120 _r0, uint120 _r1, uint120 _a) public {         
+    function test_getTokenAmountToSellForAmountC(uint120 _r0, uint120 _r1, uint120 _a) public {
         uint a = uint(_a);
         uint r0 = uint(_r0);
         uint r1 = uint(_r1);

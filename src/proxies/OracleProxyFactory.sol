@@ -3,14 +3,14 @@
 pragma solidity ^0.8.0;
 
 import "./OracleProxy.sol";
-import "./../../lib/safe-contracts/contracts/proxies/GnosisSafeProxy.sol";
+import "@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxy.sol";
 
 contract OracleProxyFactory {
 
     function createOracle(
         address oracleSingleton,
-        address safeSingleton,        
-        address tokenC, 
+        address safeSingleton,
+        address tokenC,
         bytes calldata oracleMarketConfig,
         address[] calldata owners,
         uint256 safeThreshold
@@ -21,7 +21,7 @@ contract OracleProxyFactory {
         // setup safe
         // 0xb63e800d = GnosisSafe.setup.selector
         bytes memory safeSetupCall = abi.encodeWithSelector(
-            0xb63e800d, 
+            0xb63e800d,
             owners,
             safeThreshold,
             address(0),

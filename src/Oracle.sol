@@ -9,6 +9,8 @@ import './interfaces/IERC20.sol';
 import './Oracle_ERC1155.sol';
 import './Oracle_Singleton.sol';
 
+import 'hardhat/console.sol';
+
 contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, IOracleEvents {
     /*
         marketIdentifier = keccack256(abi.encode(creator, eventIdentifier, address(this)))
@@ -24,13 +26,13 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
     MarketConfig public marketConfig;
     mapping(address => uint) public cReserves;
 
-    address public override manager; 
+    address public override manager;
 
     constructor() {
         // Oracle is intended to be used as an singleton.
         // Thus setting manager as address(1) makes
         // this contract without proxy unusable.
-        manager = address(1);
+        manager = address(2);
     }
 
 
@@ -41,17 +43,17 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
     }
 
     function isMarketClosed(bytes32 marketIdentifier) internal returns (bool, uint8){
-        StateDetails memory _stateDetails = stateDetails[marketIdentifier];    
+        StateDetails memory _stateDetails = stateDetails[marketIdentifier];
         if (_stateDetails.stage != uint8(Stages.MarketClosed)){
             if(
-                _stateDetails.stage != uint8(Stages.MarketCreated) && 
+                _stateDetails.stage != uint8(Stages.MarketCreated) &&
                 (
                     (_stateDetails.stage != uint8(Stages.MarketResolve) && block.number >= _stateDetails.donBufferEndsAtBlock && (_stateDetails.donBufferBlocks == 0 || _stateDetails.donEscalationLimit != 0))
                     || (block.number >=  _stateDetails.resolutionEndsAtBlock && (_stateDetails.stage == uint8(Stages.MarketResolve) || _stateDetails.donEscalationLimit == 0))
                 )
             )
             {
-                // Set outcome by expiry  
+                // Set outcome by expiry
                 Staking memory _staking = staking[marketIdentifier];
                 if (_staking.staker0 == address(0) && _staking.staker1 == address(0)){
                     Reserves memory _reserves = outcomeReserves[marketIdentifier];
@@ -67,7 +69,7 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
                 }
                 _stateDetails.stage = uint8(Stages.MarketClosed);
                 stateDetails[marketIdentifier] = _stateDetails;
-                return (true, _stateDetails.outcome); 
+                return (true, _stateDetails.outcome);
             }
            return (false, 2);
         }
@@ -80,7 +82,7 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
             uint256(keccak256(abi.encode(marketIdentifier, 1)))
         );
     }
-    
+
     function getReserveTokenIds(bytes32 marketIdentifier) public pure override returns (uint,uint){
         return (
             uint256(keccak256(abi.encode('R', marketIdentifier, 0))),
@@ -113,7 +115,7 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
         Reserves memory _reserves;
         _reserves.reserve0 = amount;
         _reserves.reserve1 = amount;
-        outcomeReserves[marketIdentifier] = _reserves; 
+        outcomeReserves[marketIdentifier] = _reserves;
 
         // get market config
         MarketConfig memory _marketConfig = marketConfig;
@@ -177,7 +179,7 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
 
         outcomeReserves[marketIdentifier] = _reserves;
         emit OutcomeBought(marketIdentifier, to, amount, amount0, amount1);
-    } 
+    }
 
     function sell(uint amount, address to, bytes32 marketIdentifier) external override {
         require(isMarketFunded(marketIdentifier));
@@ -200,7 +202,7 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
         _burn(address(this), token0Id, amount);
         _burn(address(this), token1Id, amount);
 
-        // update outcomeReserves 
+        // update outcomeReserves
         uint _reserve0New = (_reserves.reserve0 + amount0) - amount;
         uint _reserve1New = (_reserves.reserve1 + amount1) - amount;
         require((_reserves.reserve0*_reserves.reserve1) <= (_reserve0New*_reserve1New), "ERR - INV");
@@ -220,7 +222,7 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
             _stateDetails.stage = uint8(Stages.MarketBuffer);
         }
         require(
-            _stateDetails.stage == uint8(Stages.MarketBuffer) 
+            _stateDetails.stage == uint8(Stages.MarketBuffer)
             && _stateDetails.donEscalationCount < _stateDetails.donEscalationLimit
             && block.number < _stateDetails.donBufferEndsAtBlock
         );
@@ -257,7 +259,7 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
 
         stakingReserves[marketIdentifier] = _stakingReserves;
         staking[marketIdentifier] = _staking;
-        
+
         // escalation limit
         if (_stateDetails.donEscalationCount + 1 < _stateDetails.donEscalationLimit){
             _stateDetails.donBufferEndsAtBlock = uint32(block.number) + _stateDetails.donBufferBlocks;
@@ -317,16 +319,16 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
         // burn stake tokens
         _burn(to, sToken0Id, sAmount0);
         _burn(to, sToken1Id, sAmount1);
-        
+
         StakingReserves memory _stakingReserves = stakingReserves[marketIdentifier];
         uint winAmount;
-        if (outcome == 2){    
+        if (outcome == 2){
             winAmount = sAmount0 + sAmount1;
             _stakingReserves.reserveS0 -= sAmount0;
             _stakingReserves.reserveS1 -= sAmount1;
         }else {
             Staking memory _staking = staking[marketIdentifier];
-            
+
             if (outcome == 0){
                 _stakingReserves.reserveS0 -= sAmount0;
                 winAmount = sAmount0;
@@ -360,9 +362,9 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
     function setOutcome(uint8 outcome, bytes32 marketIdentifier) external override {
         require(msg.sender == manager);
         require(outcome < 3);
-        
+
         StateDetails memory _stateDetails = stateDetails[marketIdentifier];
-        if (_stateDetails.stage == uint8(Stages.MarketFunded) 
+        if (_stateDetails.stage == uint8(Stages.MarketFunded)
             && block.number >= _stateDetails.expireAtBlock
             && _stateDetails.donEscalationLimit == 0
             && _stateDetails.donBufferBlocks != 0){
@@ -421,8 +423,8 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
         emit OutcomeReservesClaimed(marketIdentifier);
     }
 
-    /* 
-    Note on configs - 
+    /*
+    Note on configs -
     1. To resolve markets to favored outcome right after market expiry, set donBufferPeriod to 0
     2. To pass on outcome decision to oracle right after market expiry, set escalation limit to 0 & donBufferBlocks > 0
     3. To resolve to last staked outcome right after hitting escalation limit, set resolutionBufferBlocks to 0
@@ -430,16 +432,16 @@ contract Oracle is Oracle_Singleton, Oracle_ERC1155, IOracle, IOracleDataTypes, 
     bytes4(keccak256("updateMarketConfig(bool,uint32,uint32,uint16,uint32,uint32,uint32)")) = 0x94eb6f2f
      */
     function updateMarketConfig(
-        bool _isActive, 
-        uint32 _feeNumerator, 
+        bool _isActive,
+        uint32 _feeNumerator,
         uint32 _feeDenominator,
-        uint16 _donEscalationLimit, 
-        uint32 _expireBufferBlocks, 
-        uint32 _donBufferBlocks, 
+        uint16 _donEscalationLimit,
+        uint32 _expireBufferBlocks,
+        uint32 _donBufferBlocks,
         uint32 _resolutionBufferBlocks
     ) external override {
         // require(msg.sender == manager);
-        
+
         // numerator < denominator
         require(_feeNumerator < _feeDenominator);
         // _expireBufferBlocks > 0 for active trading time

@@ -6,18 +6,34 @@ import './libraries/TransferHelper.sol';
 import './libraries/Math.sol';
 import "./interfaces/IOracle.sol";
 import "./interfaces/IERC1155.sol";
+import "zerocompress/contracts/interfaces/IDecompressReceiver.sol";
+import "zerocompress/contracts/Decompressor.sol";
 
+contract MarketRouter is Decompressor {
 
-contract MarketRouter {
+    constructor() Decompressor() {}
 
-    constructor() {}
+    function callMethod(uint8 method, bytes memory data) internal override {
+      if (method == uint8(0)) {
+        (
+          bytes32 eventId,
+          address oracle,
+          uint fundingAmount,
+          uint amountIn,
+          uint _for
+        ) = abi.decode(data, (bytes32, address, uint, uint, uint));
+        createFundBetOnMarket(eventId, oracle, fundingAmount, amountIn, _for);
+      } else {
+        revert('unknown method');
+      }
+    }
 
     function getMarketIdentifier(address creator, bytes32 eventIdentifier, address oracle) public pure returns (bytes32 marketIdentifier){
         marketIdentifier = keccak256(abi.encode(creator, eventIdentifier, oracle));
     }
 
     /// @notice Create, fund, and place bet on a market
-    function createFundBetOnMarket(bytes32 eventIdentifier, address oracle, uint fundingAmount, uint amountIn, uint _for) external {
+    function createFundBetOnMarket(bytes32 eventIdentifier, address oracle, uint fundingAmount, uint amountIn, uint _for) public {
         require(_for < 2 && fundingAmount > 0);
 
         address tokenC = IOracle(oracle).collateralToken();
@@ -52,8 +68,8 @@ contract MarketRouter {
         IOracle(oracle).buy(amountOutToken0, amountOutToken1, msg.sender, marketIdentifier);
     }
 
-    /// @notice Buy minimum amountOfToken0 & amountOfToken1 with collteral tokens == amountInC. 
-    /// fixedTokenIndex - index to token of which amount does not change in reaction to prices 
+    /// @notice Buy minimum amountOfToken0 & amountOfToken1 with collteral tokens == amountInC.
+    /// fixedTokenIndex - index to token of which amount does not change in reaction to prices
     function buyMinTokensForExactCTokens(uint amountOutToken0Min, uint amountOutToken1Min, uint amountInC, uint fixedTokenIndex, address oracle, bytes32 marketIdentifier) external {
         require(fixedTokenIndex < 2);
 
@@ -102,16 +118,16 @@ contract MarketRouter {
         }
         require(amountInToken0 <= amountInToken0Max && amountInToken1 <= amountInToken1Max, "TRADE: INVALID");
 
-        (uint token0, uint token1) = IOracle(oracle).getOutcomeTokenIds(marketIdentifier); 
+        (uint token0, uint token1) = IOracle(oracle).getOutcomeTokenIds(marketIdentifier);
         IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token0, amountInToken0, '');
         IERC1155(oracle).safeTransferFrom(msg.sender, oracle, token1, amountInToken1, '');
         IOracle(oracle).sell(amountOutTokenC, msg.sender, marketIdentifier);
     }
 
-    /// @notice Stake amountIn for outcome _for 
+    /// @notice Stake amountIn for outcome _for
     function stakeForOutcome(uint8 _for, uint amountIn, address oracle, bytes32 marketIdentifier) external {
         require(_for < 2);
-        
+
         (uint lastAmountStaked,,,) = IOracle(oracle).staking(marketIdentifier);
         require(lastAmountStaked*2 <= amountIn, "ERR: DOUBLE");
 
@@ -136,8 +152,8 @@ contract MarketRouter {
         IOracle(oracle).redeemWinning(msg.sender, marketIdentifier);
     }
 
-    /// @notice Redeem msg.sender's maximum trade winnings. This is probably less costly than 
-    /// redeemWinning in OR L2s, since calldata arguments are reduced to 2 from 4. 
+    /// @notice Redeem msg.sender's maximum trade winnings. This is probably less costly than
+    /// redeemWinning in OR L2s, since calldata arguments are reduced to 2 from 4.
     function redeemMaxWinning(address oracle, bytes32 marketIdentifier) external {
         (uint token0, uint token1) = IOracle(oracle).getOutcomeTokenIds(marketIdentifier);
         uint bToken0 = IERC1155(oracle).balanceOf(msg.sender, token0);
@@ -160,5 +176,5 @@ contract MarketRouter {
         // redeem stake
         IOracle(oracle).redeemStake(marketIdentifier, msg.sender);
     }
-    
+
 }
