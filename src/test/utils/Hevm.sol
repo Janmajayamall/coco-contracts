@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "ds-test/test.sol";
+import "../../libraries/test.sol";
 
 contract Hevm is DSTest {
     // sets the block timestamp to x

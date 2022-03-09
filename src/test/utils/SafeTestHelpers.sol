@@ -1,4 +1,4 @@
-import "./../../../lib/safe-contracts/contracts/GnosisSafe.sol";
+import "@gnosis.pm/safe-contracts/contracts/GnosisSafe.sol";
 
 
 contract SafeTestHelpers {

@@ -4,3 +4,10 @@ node_modules
 # Dapptools
 out/
 .env
+
+# Hardhat
+cache
+artifacts
+
+# Mac
+.DS_Store
