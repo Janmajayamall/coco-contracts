@@ -6,27 +6,11 @@ import './libraries/TransferHelper.sol';
 import './libraries/Math.sol';
 import "./interfaces/IOracle.sol";
 import "./interfaces/IERC1155.sol";
-import "zerocompress/contracts/interfaces/IDecompressReceiver.sol";
 import "zerocompress/contracts/Decompressor.sol";
 
 contract MarketRouter is Decompressor {
 
-    constructor() Decompressor() {}
-
-    function callMethod(uint8 method, bytes memory data) internal override {
-      if (method == uint8(0)) {
-        (
-          bytes32 eventId,
-          address oracle,
-          uint fundingAmount,
-          uint amountIn,
-          uint _for
-        ) = abi.decode(data, (bytes32, address, uint, uint, uint));
-        createFundBetOnMarket(eventId, oracle, fundingAmount, amountIn, _for);
-      } else {
-        revert('unknown method');
-      }
-    }
+    constructor(address d) Decompressor(d) {}
 
     function getMarketIdentifier(address creator, bytes32 eventIdentifier, address oracle) public pure returns (bytes32 marketIdentifier){
         marketIdentifier = keccak256(abi.encode(creator, eventIdentifier, oracle));

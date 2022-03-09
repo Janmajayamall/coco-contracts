@@ -1,9 +1,13 @@
 const { ethers } = require('hardhat')
-const { compressSingle } = require('zerocompress')
+const { compress } = require('zerocompress')
 
 async function deploy() {
+  const Decompress = await ethers.getContractFactory('Decompress')
+  const decompress = await Decompress.deploy()
+  await decompress.deployed()
+
   const MarketRouter = await ethers.getContractFactory('MarketRouter')
-  const marketRouter = await MarketRouter.deploy()
+  const marketRouter = await MarketRouter.deploy(decompress.address)
   await marketRouter.deployed()
 
   const Oracle = await ethers.getContractFactory('Oracle')
@@ -39,17 +43,16 @@ describe('Deploy', () => {
     const eventId1 = `0x0${Array(63).fill().map(() => '0').join('')}`
     const eventId2 = `0x1${Array(63).fill().map(() => '0').join('')}`
 
-    const data = compressSingle(0, 0, [
+    const calldata = marketRouter.interface.encodeFunctionData('createFundBetOnMarket', [
       eventId2,
       oracle.address,
       1000,
       1000,
       1
-    ], ['bytes32', 'address', 'uint', 'uint', 'uint'])
-    console.log(data)
-    await marketRouter.connect(user1)[`decompress${data[0].length}`](
-      ...data
-    ).then(t => t.wait())
+    ])
+
+    const [func, data] = compress(calldata)
+    await marketRouter.connect(user1)[func](data).then(t => t.wait())
 
     await marketRouter.connect(user1).createFundBetOnMarket(
       eventId1,

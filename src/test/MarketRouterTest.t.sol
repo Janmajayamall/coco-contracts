@@ -30,7 +30,7 @@ contract MarketRouterTest is OracleTestHelpers {
            100
         );
 
-        marketRouter = address(new MarketRouter());
+        marketRouter = address(new MarketRouter(address(0)));
 
         // give max approval to marketRouter
         IERC20(tokenC).approve(marketRouter, type(uint).max);
