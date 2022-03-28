@@ -184,21 +184,17 @@ contract TestGroup is DSTest {
 
         // assertTrue(false);
     }
-
-    event FuckYou(bytes32 k);
-    event FuckYou(bytes k);
     function testSignHelper() public {
         GroupMarket.MarketData memory _marketData = GroupMarket.MarketData({
-            group:address(0x563c8Bc414E080313870143A04Dea30C72Df7C43),
-            marketIdentifier: hex"29e7f1d6fa5a6aa908168535a734f12eb327860ce90f760e17d35f0a2ca32070",
+            group:address(0xaD67843A0CC312a5B0e295E9192a4f575Bc104B3),
+            marketIdentifier: hex"f46d83587ba9524e4b954832f83b19bab7189cde3b040661ea67a2a546d0a93b",
             amount1: uint256(50000000000000000)
         });
 
         uint256 pvKey = uint256(0xbff706dc5bb72ac228325d17223776d6474a8ad0c2f6dec26838840bac652b7b);
 
         bytes memory signature = ethSignMarketData(_marketData, groupRouter.domainSeparator(), pvKey);
-        emit FuckYou(signature);
-
+        emit F(signature);
         assertTrue(false);
     
         // bytes memory signature = hex"54438918944217a3696455cd25ded51a8f1bf6e9540f626cf0d435d41ea8854b4b16f9d2982ac3b927750a290cbe4ed0e578545e49b888e6a314e9cff046db491c";
@@ -209,8 +205,13 @@ contract TestGroup is DSTest {
         // );
         // console.log(f);
     }
-
-    // 0x54438918944217a3696455cd25ded51a8f1bf6e9540f626cf0d435d41ea8854b4b16f9d2982ac3b927750a290cbe4ed0e578545e49b888e6a314e9cff046db491c
+    event F(bytes s);
+    // function testHJ() public  {
+    //     (bytes32 s0, bytes32 s1) = getStakingIds(hex"29e7f1d6fa5a6aa908168535a734f12eb327860ce90f760e17d35f0a2ca32070", address(0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6));
+    //     emit F(s0);
+    //     emit F(s1);
+    //     assertTrue(false);
+    // }
 
     function testCreateMarket() public {
         Group _group = group;

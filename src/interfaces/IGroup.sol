@@ -14,6 +14,10 @@ interface IGroup {
     function donReservesLimit() external returns (uint256);
     function cReserves(address token) external returns (uint256);
     function manager() external view returns (address);
+    function getStakingIds(
+        bytes32 marketIdentifier, 
+        address _of
+    ) external view returns (bytes32, bytes32);
 
     function marketStates(bytes32 marketIdentifier) external returns (uint64, uint64, uint64, uint64);
     function marketDetails(bytes32 marketIdentifier) external returns (address, uint64, uint8);

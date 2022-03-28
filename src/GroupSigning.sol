@@ -38,8 +38,8 @@ abstract contract GroupSigning {
                 DOMAIN_TYPE_HASH,
                 DOMAIN_NAME,
                 DOMAIN_VERSION,
-                uint256(421611),
-                address(0x693346084446E287074402F420157120B2Da5237)
+                chainId,
+                address(this)
             )
         );
     }

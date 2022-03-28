@@ -3,9 +3,9 @@ export ETH_RPC_URL=https://rinkeby.arbitrum.io/rpc
 export ETH_FROM=0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6
 export RUST_BACKTRACE=full
 
-export GroupSingleton=0xbe0484dcccc05b8b11c5f6526ae041498bc1bd85
+export GroupSingleton=0xe8db346e1287f0044cac91a11e7d90dbd307da78
 export GroupProxyFactory=0x1f7e73cefe7562fd2461e966cdfbc40645a6a3a4
-export GroupRouter=0x3ae3a80ba2e09b5438a76985e40f706e7a9b1b06
+export GroupRouter=0x71aee0888a12359bb2198ce58f3694b0b9b6450d
 
 # deploy Group Singleton
 # out=$(forge create Group)

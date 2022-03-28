@@ -19,7 +19,7 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
     using Transfers for IERC20;
 
     uint256 internal constant ONE = 1e18;
-    string internal constant S_ID = 'S_Group_v1';
+    string public constant S_ID = 'S_Group_v1';
 
     mapping(bytes32 => MarketState) public override marketStates;
     mapping(bytes32 => MarketDetails) public override marketDetails;
@@ -49,7 +49,7 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
     function getStakingIds(
         bytes32 marketIdentifier, 
         address _of
-    ) internal pure returns (
+    ) public pure override returns (
         bytes32 sId0,
         bytes32 sId1
     ) {
