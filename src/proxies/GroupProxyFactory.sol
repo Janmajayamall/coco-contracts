@@ -40,11 +40,11 @@ contract GroupProxyFactory {
         GnosisSafeProxy safeProxy = safeFactory.createProxyWithNonce(safeSingleton, safeSetupCall, uint256(uint160(msg.sender)));
 
         // deploy group proxy
-        groupProxy = createGroupWithSafe(address(safeProxy), groupSingleton, tokenC, donReservesLimit, groupMarketConfig);
+        groupProxy = createGroupWithManager(address(safeProxy), groupSingleton, tokenC, donReservesLimit, groupMarketConfig);
     }
 
-    function createGroupWithSafe(
-        address safe,
+    function createGroupWithManager(
+        address manager,
         address groupSingleton,        
         address tokenC, 
         uint256 donReservesLimit,
@@ -83,7 +83,7 @@ contract GroupProxyFactory {
 
         // update manager
         // 0x58aba00f = group.updateManager.selector
-        bytes memory updateManagerCall = abi.encodeWithSelector(0x58aba00f,  safe);
+        bytes memory updateManagerCall = abi.encodeWithSelector(0x58aba00f,  manager);
         assembly {
             if eq(call(gas(), groupProxy, 0, add(updateManagerCall, 0x20), mload(updateManagerCall), 0, 0), 0) {
                 revert(0, 0)

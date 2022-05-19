@@ -35,12 +35,12 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
 
     modifier isAuthenticated() {
         address _manager = manager;
-        if (msg.sender != _manager && _manager != address(0)) revert UnAuthenticated();
+        if (_manager != address(0) && msg.sender != _manager) revert UnAuthenticated();
         _;
     }
 
     constructor() {
-        // Oracle is intended to be used as an singleton.
+        // `Group` is intended to be used as an singleton.
         // Thus setting manager as address(1) makes
         // this contract without proxy unusable.
         manager = address(1);
@@ -297,9 +297,9 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
             || marketState.resolutionBufferEndsAt == 0
         ) revert InvalidSetOutcomeCall();
 
-        uint256 fee;
         MarketDetails memory details = marketDetails[marketIdentifier];
         if (outcome != 2 && details.fee != 0){
+            uint256 fee;
             MarketReserves memory reserves = marketReserves[marketIdentifier];
             if (outcome == 0) {
                 fee = (reserves.reserve1 * uint256(details.fee)) / ONE;
@@ -310,6 +310,12 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
                 reserves.reserve0 -= fee;
             }
             marketReserves[marketIdentifier] = reserves;
+
+            // transfer fee
+            address tokenC = details.tokenC;
+            IERC20(tokenC).safeTransfer(msg.sender, fee);
+            cReserves[tokenC] -= fee;
+
         }
 
         details.outcome = outcome;
@@ -318,11 +324,6 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
         // end resolution buffer period
         marketState.resolutionBufferEndsAt = uint64(block.timestamp) - 1;
         marketStates[marketIdentifier] = marketState;
-
-        // transfer fee
-        address tokenC = details.tokenC;
-        IERC20(tokenC).safeTransfer(msg.sender, fee);
-        cReserves[tokenC] -= fee;
 
         emit OutcomeSet(marketIdentifier);
     }
@@ -361,8 +362,6 @@ contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroup
     }
 
     function updateManager(address to) external override isAuthenticated {
-        address _manager = manager;
-        if (msg.sender != _manager && _manager != address(0)) revert UnAuthenticated();
         if (to == address(0)) revert ZeroManagerAddress();
         manager = to;
         emit ConfigUpdated();

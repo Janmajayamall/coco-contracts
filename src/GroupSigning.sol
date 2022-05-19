@@ -60,7 +60,7 @@ abstract contract GroupSigning {
         }
     }
 
-        function ecdsaRecover(bytes32 message, bytes calldata encodedSignature)
+    function ecdsaRecover(bytes32 message, bytes calldata encodedSignature)
         internal
         pure
         returns (address signer)

@@ -2,7 +2,7 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
-remappings = ['ds-test/=lib/ds-test/src/']
+remappings = ['ds-test/=lib/ds-test/src/', 'safe-contracts/=lib/safe-contracts/contracts']
 verbosity = 3
 sender = '0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6'
 tx_origin = '0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6'

@@ -160,7 +160,7 @@ contract TestGroup is DSTest {
 
         // new group
         bytes memory marketConfig = abi.encode(true, defaultFee, defaultDonBuffer, defaultResolutionBuffer);
-        group = Group(address(groupProxyFactory.createGroupWithSafe(
+        group = Group(address(groupProxyFactory.createGroupWithManager(
             address(this), 
             address(groupSingleton), 
             address(tokenC), 
@@ -194,15 +194,19 @@ contract TestGroup is DSTest {
         uint256 pvKey = uint256(0xbff706dc5bb72ac228325d17223776d6474a8ad0c2f6dec26838840bac652b7b);
 
         bytes memory signature = ethSignMarketData(_marketData, groupRouter.domainSeparator(), pvKey);
-        emit F(signature);
-        assertTrue(false);
+        // emit F(signature);
+        // assertTrue(false);
     
         // bytes memory signature = hex"54438918944217a3696455cd25ded51a8f1bf6e9540f626cf0d435d41ea8854b4b16f9d2982ac3b927750a290cbe4ed0e578545e49b888e6a314e9cff046db491c";
-        // address f = groupRouter.recoverSigner(
-        //     _marketData,
-        //     signature,
-        //     GroupSigning.Scheme.EthSign
-        // );
+        assertEq(
+            groupRouter.recoverSigner(
+                _marketData,
+                signature,
+                GroupSigning.Scheme.Eip712
+            ),
+            vm.addr(pvKey)
+        );
+
         // console.log(f);
     }
     event F(bytes s);
