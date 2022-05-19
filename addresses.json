@@ -1,8 +1,6 @@
 {
-	"GroupSingleton": "0xe8db346e1287f0044cac91a11e7d90dbd307da78",
-	"GroupProxyFactory-dev": "0x1f7e73cefe7562fd2461e966cdfbc40645a6a3a4",
-	"GroupProxyFactory-staging": "0xa4a1bd14029359fd0c81a6770a94984087122930",
-	"GroupProxyFactory-prod": "0xd987af7a17a55d261933f6445a86373501b071ef",
-	"GroupRouter": "0x71aee0888a12359bb2198ce58f3694b0b9b6450d",
-	"T_USD": "0xc99ce855c5051fed2b9a84595f312ef3832e38c8"
+	"GroupSingleton": "0x851454a874d9367d4537192ae2b46087140a67b1",
+	"GroupRouter": "0x6a9b3c98cecb2ab2dfb14418950c5fe79aa94600",
+	"T_USD": "0x6a0ea6c6754a76bcabbcec7dd4c666582d5b35e0",
+	"GroupProxyFactory": "0x76d36ed79eedfdb6b770b3a55b8e8dd43b226744"
 }
