@@ -1,11 +1,20 @@
-export ETH_KEYSTORE=~/Library/Ethereum/keystore/UTC--2021-10-26T00-55-28.935753000Z--ed53fa304e7fcbab4e8acb184f5fc6f69ed54ff6
 export ETH_RPC_URL=https://rinkeby.arbitrum.io/rpc
-export ETH_FROM=0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6
 export RUST_BACKTRACE=full
 
-export GroupSingleton=0xe8db346e1287f0044cac91a11e7d90dbd307da78
-export GroupProxyFactory=0x1f7e73cefe7562fd2461e966cdfbc40645a6a3a4
-export GroupRouter=0x71aee0888a12359bb2198ce58f3694b0b9b6450d
+DEPLOYER=0xed53fa304E7fcbab4E8aCB184F5FC6F69Ed54fF6
+GroupProxyFactory=0x76d36ed79eedfdb6b770b3a55b8e8dd43b226744
+GroupSingleton=0x851454a874d9367d4537192ae2b46087140a67b1
+GroupRouter=0x6a9b3c98cecb2ab2dfb14418950c5fe79aa94600
+FakeWETH=0xc99ce855c5051fed2b9a84595f312ef3832e38c8
+RedditGroup=0xd426ad04563974a6a3ed01b967a963fa2b6f7df0
+
+privateKey=bff706dc5bb72ac228325d17223776d6474a8ad0c2f6dec26838840bac652b7b
+
+
+groupConfigData=$(cast abi-encode "f(bool,uint64,uint64,uint64)" true 0 86400 18446744073709551615)
+
+group=$(cast send $GroupProxyFactory "createGroupWithManager(address,address,address,uint256,bytes calldata)" $DEPLOYER $GroupSingleton $FakeWETH 100000000000000000000 $groupConfigData --legacy --private-key $privateKey) 
+echo $group
 
 # deploy Group Singleton
 # out=$(forge create Group)

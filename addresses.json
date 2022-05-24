@@ -2,5 +2,7 @@
 	"GroupSingleton": "0x851454a874d9367d4537192ae2b46087140a67b1",
 	"GroupRouter": "0x6a9b3c98cecb2ab2dfb14418950c5fe79aa94600",
 	"T_USD": "0x6a0ea6c6754a76bcabbcec7dd4c666582d5b35e0",
-	"GroupProxyFactory": "0x76d36ed79eedfdb6b770b3a55b8e8dd43b226744"
+	"GroupProxyFactory": "0x76d36ed79eedfdb6b770b3a55b8e8dd43b226744",
+	"FakeWeth": "0xc99ce855c5051fed2b9a84595f312ef3832e38c8",
+	"RedditGroup": "0xd426ad04563974a6a3ed01b967a963fa2b6f7df0"
 }
