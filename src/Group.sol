@@ -11,8 +11,6 @@ import './Group_ERC1155.sol';
 import './Group_Singleton.sol';
 import './libraries/Transfers.sol';
 
-// tremp
-import './test/Console.sol';
 
 contract Group is Group_Singleton, IGroup, IGroupDataTypes, IGroupEvents, IGroupErrors {
 
