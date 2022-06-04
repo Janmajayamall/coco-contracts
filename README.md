@@ -13,6 +13,8 @@ You can try COCO right now @ [https://cocoverse.club/](https://cocoverse.club/).
 
 This repository contains solidity contracts for COCO that are deployed on Arbitrum L2. Source code for frontend can be found [here](https://github.com/Janmajayamall/coco-frontend) and backend can be found [here](https://github.com/Janmajayamall/coco-backend).
 
+A reddit bot that applies coco's way of moderation to subreddits is under development. More info can be found [here](https://github.com/Janmajayamall/coco-reddit).
+
 Coco also has an extension that moderates content that you browse and saves you from misinformation. Download it [here](https://chrome.google.com/webstore/detail/coco/kpfgklfbadbbhabhipedcpbbninnlnlc). To know more about it check out my [tweet thread](https://twitter.com/Janmajaya_mall/status/1501463658760912896).
 
 Also [join our telegram](https://t.me/+A47HJeqh0-tlODI1) group and say hi!

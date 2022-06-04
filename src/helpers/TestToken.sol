@@ -12,8 +12,8 @@ contract TestToken is IERC20 {
 
     uint256 private _totalSupply;
 
-    string constant private _name = "Test_USD";
-    string constant private _symbol = "T_USD";
+    string constant private _name = "FakeWeth";
+    string constant private _symbol = "F_WETH";
 
     address public immutable owner;
 
